@@ -39,6 +39,15 @@
       --page-x: 16px;
       /* island height + 16px clearance, plus the island's own 16px bottom inset */
       --nav-clearance: calc(var(--nav-h) + 16px + 16px + env(safe-area-inset-bottom, 0px));
+
+      /* ============ Motion ============ */
+      --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+      --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+      --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --dur-press: 90ms;
+      --dur-release: 260ms;
+      --dur-screen: 320ms;
+      --dur-overlay: 380ms;
     }
 
     /* ============ Reset & base ============ */
@@ -64,6 +73,7 @@
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
     }
+    button, [data-press] { touch-action: manipulation; }
     :focus-visible {
       outline: 2px solid var(--sky);
       outline-offset: 2px;
@@ -71,6 +81,22 @@
     }
     svg.icon { display: block; width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
     svg.icon.filled { fill: currentColor; stroke: none; }
+
+    /* ============ Press feedback ============
+       Fast in (90ms ease-out-soft), slow out (260ms spring overshoot).
+       Only transform and opacity. */
+    button, [data-press] {
+      transition: transform var(--dur-release) var(--spring), opacity var(--dur-release) var(--spring);
+    }
+    button.is-pressed, [data-press].is-pressed {
+      transition: transform var(--dur-press) var(--ease-out-soft), opacity var(--dur-press) var(--ease-out-soft);
+      transform: scale(0.97);
+      opacity: 0.92;
+      will-change: transform, opacity;
+    }
+    button.is-releasing, [data-press].is-releasing { will-change: transform, opacity; }
+    /* Elements whose resting transform must be preserved */
+    .path-node.is-pressed { transform: translate(-50%, -50%) scale(0.97); }
 
     /* ============ Type scale ============ */
     .t-display  { font-size: 36px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; }
@@ -84,7 +110,7 @@
     .app-header {
       position: fixed;
       top: 0; left: 0; right: 0;
-      z-index: 40;
+      z-index: 60;
       height: calc(var(--header-h) + env(safe-area-inset-top, 0px));
       padding-top: env(safe-area-inset-top, 0px);
       background: var(--ground);
@@ -132,15 +158,74 @@
     }
 
     /* ============ Screens ============ */
+    #main { transform-origin: center center; }
     .screen { display: none; }
     .screen.active { display: block; }
-    .screen {
+    .screen, .overlay-inner {
       padding: calc(var(--header-h) + env(safe-area-inset-top, 0px)) var(--page-x) var(--nav-clearance);
       max-width: 480px;
       margin: 0 auto;
     }
     .screen-detail { padding-top: 0; }
-    .screen-kingdom, .screen-settings { padding-bottom: 32px; }
+
+    /* Screen transition: outgoing fades + 8px down, incoming fades + from 8px up.
+       Both run at once so there is never a blank frame. */
+    .screen.leaving {
+      position: fixed;
+      left: 0; right: 0;
+      z-index: 5;
+      pointer-events: none;
+      will-change: transform, opacity;
+    }
+    .screen.leaving-active {
+      transform: translateY(8px);
+      opacity: 0;
+      transition: transform var(--dur-screen) var(--ease-out-soft), opacity var(--dur-screen) var(--ease-out-soft);
+    }
+    .screen.enter-anim {
+      transition: transform var(--dur-screen) var(--ease-out-soft), opacity var(--dur-screen) var(--ease-out-soft);
+      will-change: transform, opacity;
+    }
+    .screen.enter-anim.entering { transform: translateY(-8px); opacity: 0; }
+
+    /* Content entrance stagger */
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .rise-in {
+      animation: riseIn var(--dur-screen) var(--ease-out-soft) both;
+      animation-delay: calc(var(--si, 0) * 30ms);
+      will-change: transform, opacity;
+    }
+
+    /* ============ Overlays (Settings, Kingdom Scrolling) ============ */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    .overlay.open { display: block; }
+    .overlay.anim { transition: transform var(--dur-overlay) var(--ease-out-soft); will-change: transform; }
+    .overlay.from-bottom { transform: translateY(100%); }
+    .overlay.dragging { transition: none; }
+    .overlay.snap-back { transition: transform var(--dur-release) var(--spring); }
+    #main.push-anim {
+      transition: transform var(--dur-overlay) var(--ease-out-soft), opacity var(--dur-overlay) var(--ease-out-soft);
+      will-change: transform, opacity;
+    }
+    #main.pushed { transform: scale(0.96); opacity: 0.6; }
+    #overlay-settings { background: var(--ground); }
+    #overlay-settings .overlay-inner { padding-bottom: 32px; }
+    #overlay-scrolling {
+      background: var(--video-bg);
+      overflow: hidden;
+      padding-top: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+    }
 
     /* ============ Status strip ============ */
     .status-strip {
@@ -152,11 +237,12 @@
     }
     .status-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
     .status-item .stat { display: flex; align-items: center; gap: 6px; color: var(--ink); }
-    .status-item .stat .num { font-size: 18px; font-weight: 600; }
+    .status-item .stat .num { font-size: 18px; font-weight: 600; transition: opacity 120ms var(--ease-in-out); }
     .status-item .stat svg.icon { width: 20px; height: 20px; }
     .status-item.streak .stat { color: var(--lime); }
     .status-item.streak .stat .num { color: var(--lime); }
     .status-item .cap { color: var(--ink-muted); }
+    .fade-num { opacity: 0; }
 
     /* ============ Home: week banner ============ */
     .week-banner {
@@ -173,7 +259,15 @@
     /* ============ Home: path ============ */
     .path-wrap { position: relative; margin-top: 8px; }
     .path-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-    .path-svg path { stroke: var(--dim); stroke-width: 2; fill: none; }
+    .path-svg path {
+      stroke: var(--dim);
+      stroke-width: 2;
+      fill: none;
+      transform-box: fill-box;
+      transform-origin: top center;
+    }
+    .path-svg path.draw-in { animation: drawSeg 420ms var(--ease-out-soft) both; }
+    @keyframes drawSeg { from { transform: scaleY(0); } to { transform: scaleY(1); } }
     .path-node {
       position: absolute;
       transform: translate(-50%, -50%);
@@ -188,7 +282,14 @@
       width: 88px; height: 88px;
       background: var(--lime);
       color: var(--ground);
+    }
+    /* Today's glow lives on pseudo-elements so it can fade in with opacity only. */
+    .path-node.today::after {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 50%;
       box-shadow: 0 0 44px 10px rgba(198, 242, 78, 0.30);
+      pointer-events: none;
     }
     .path-node.today::before {
       content: '';
@@ -201,11 +302,6 @@
     @keyframes pulse {
       0%, 100% { opacity: 0.5; }
       50% { opacity: 1; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .path-node.today::before { animation: none; opacity: 0.6; }
-      html { scroll-behavior: auto; }
-      * { transition: none !important; animation-duration: 0.01ms !important; }
     }
     .path-node.today svg.icon { width: 34px; height: 34px; }
     .path-node .start-pill {
@@ -220,6 +316,46 @@
       padding: 3px 14px;
       border-radius: 999px;
       white-space: nowrap;
+    }
+    /* Path entrance: nodes stagger down the trail, today's node lands last. */
+    @keyframes riseNode {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+      to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    .path-node.rise-node {
+      animation: riseNode 360ms var(--ease-out-soft) both;
+      animation-delay: calc(var(--pi, 0) * 40ms);
+    }
+    @keyframes glowInHalo { from { opacity: 0; } to { opacity: 0.5; } }
+    @keyframes glowInFull { from { opacity: 0; } to { opacity: 1; } }
+    .path-node.today.rise-node::after {
+      animation: glowInFull 400ms var(--ease-in-out) both;
+      animation-delay: calc(var(--pi, 0) * 40ms + 360ms);
+    }
+    .path-node.today.rise-node::before {
+      animation: glowInHalo 400ms var(--ease-in-out) both,
+                 pulse 2.4s ease-in-out infinite;
+      animation-delay: calc(var(--pi, 0) * 40ms + 360ms),
+                       calc(var(--pi, 0) * 40ms + 760ms);
+    }
+    .path-wrap.anim-hint .path-node { will-change: transform, opacity; }
+    /* Completion: the node fills from outline to solid lime with a spring. */
+    .path-node .fill-burst {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      background: var(--lime);
+      animation: fillBurst 420ms var(--spring) both;
+      pointer-events: none;
+    }
+    .path-node.milestone .fill-burst {
+      border-radius: 0;
+      clip-path: polygon(50% 0%, 94% 25%, 94% 75%, 50% 100%, 6% 75%, 6% 25%);
+    }
+    @keyframes fillBurst { from { transform: scale(0); } to { transform: scale(1); } }
+    .path-node.just-completed { animation: popNode 420ms var(--spring) both; }
+    @keyframes popNode {
+      0%   { transform: translate(-50%, -50%) scale(0.72); }
+      100% { transform: translate(-50%, -50%) scale(1); }
     }
     /* Milestone hexagon: outer coral shape + inner ground inset */
     .path-node.milestone {
@@ -256,6 +392,8 @@
       overflow-x: auto;
       scrollbar-width: none;
       -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x proximity;
+      overscroll-behavior-x: contain;
     }
     .shelf::-webkit-scrollbar { display: none; }
     .shelf-card {
@@ -265,6 +403,7 @@
       border-radius: var(--radius-card);
       overflow: hidden;
       text-align: left;
+      scroll-snap-align: start;
     }
     .shelf-card .ph { border-radius: 0; }
     .shelf-card .txt { padding: 10px 12px 14px; display: flex; flex-direction: column; gap: 4px; }
@@ -324,7 +463,7 @@
     }
     .day-progress { margin-top: 20px; }
     .day-progress .track { height: 3px; border-radius: 2px; background: var(--dim); overflow: hidden; }
-    .day-progress .fill { height: 100%; border-radius: 2px; background: var(--lime); }
+    .day-progress .fill { height: 100%; width: 100%; border-radius: 2px; background: var(--lime); transform-origin: left center; }
     .day-progress .cap { display: block; margin-top: 10px; color: var(--ink-muted); }
     .scripture {
       margin-top: 28px;
@@ -362,13 +501,6 @@
     .link-coral { color: var(--coral); font-size: 16px; font-weight: 600; }
 
     /* ============ Kingdom Scrolling ============ */
-    .screen-kingdom {
-      background: var(--video-bg);
-      padding-left: 0; padding-right: 0; padding-bottom: 0;
-      max-width: none;
-      height: 100dvh;
-      overflow: hidden;
-    }
     .reel {
       height: 100%;
       overflow-y: auto;
@@ -415,7 +547,7 @@
     }
     .reel-action .count { color: var(--ink-muted); font-size: 12px; font-weight: 600; }
 
-    /* ============ Screen title row (Connect / Pray) ============ */
+    /* ============ Screen title row (Connect / Pray / Evangelist / Reflect) ============ */
     .title-row {
       display: flex; align-items: center; justify-content: space-between;
       margin-top: 20px;
@@ -430,6 +562,7 @@
 
     /* ============ Connect ============ */
     .filters {
+      position: relative;
       display: flex;
       gap: 24px;
       margin: 16px calc(-1 * var(--page-x)) 0 0; /* bleed right */
@@ -446,15 +579,29 @@
       padding: 6px 0 10px;
       border-bottom: 2px solid transparent;
       flex: none;
+      transition: color 160ms var(--ease-in-out), transform var(--dur-release) var(--spring), opacity var(--dur-release) var(--spring);
     }
-    .filter[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--lime); }
+    .filter[aria-selected="true"] { color: var(--ink); }
+    /* One underline element that slides between labels */
+    #filter-underline {
+      position: absolute;
+      left: 0; bottom: 0;
+      width: 1px; height: 2px;
+      background: var(--lime);
+      transform-origin: left center;
+      transform: translateX(0) scaleX(0);
+    }
+    #filter-underline.anim { transition: transform var(--dur-release) var(--ease-out-soft); }
 
     .card-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+    @keyframes listFade { from { opacity: 0; } to { opacity: 1; } }
+    .card-list.fade-swap { animation: listFade 180ms var(--ease-in-out) both; }
     .card {
       background: var(--raised);
       border-radius: var(--radius-card);
       padding: 16px;
     }
+    .convo-card { display: block; width: 100%; text-align: left; }
     .convo-head { display: flex; align-items: center; gap: 8px; }
     .convo-head .avatar { width: 28px; height: 28px; font-size: 10px; }
     .convo-head .name { color: var(--ink-muted); }
@@ -484,8 +631,15 @@
     .goal-row .cap { color: var(--ink-muted); }
     .goal-row .bar-line { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
     .goal-row .track { flex: 1; height: 6px; border-radius: 3px; background: var(--dim); overflow: hidden; }
-    .goal-row .fill { height: 100%; border-radius: 3px; background: var(--lime); transition: width 0.3s ease; }
-    .goal-row .count { color: var(--ink); font-size: 16px; font-weight: 600; white-space: nowrap; }
+    .goal-row .fill {
+      height: 100%; width: 100%;
+      border-radius: 3px;
+      background: var(--lime);
+      transform-origin: left center;
+      transition: transform 400ms var(--ease-out-soft);
+    }
+    .goal-row .count { color: var(--ink); font-size: 16px; font-weight: 600; white-space: nowrap; transition: opacity 120ms var(--ease-in-out); }
+    .goal-sub { display: block; margin-top: 10px; color: var(--ink-muted); font-size: 14px; }
 
     .pray-head { display: flex; align-items: center; gap: 10px; }
     .pray-head .avatar { width: 32px; height: 32px; font-size: 11px; }
@@ -495,7 +649,7 @@
     .pray-body { margin-top: 12px; color: var(--ink); }
     .answered-cap { display: block; margin-top: 12px; color: var(--lime); }
     .answered-cap + .pray-body { margin-top: 6px; }
-    .pray-btn {
+    .pray-btn, .btn-lime {
       display: flex; align-items: center; justify-content: center; gap: 8px;
       width: 100%;
       margin-top: 16px;
@@ -505,15 +659,52 @@
       color: var(--lime);
       font-size: 15px;
       font-weight: 600;
-      transition: background 0.15s ease, color 0.15s ease;
+      transition: background 160ms var(--ease-in-out), border-color 160ms var(--ease-in-out), color 160ms var(--ease-in-out),
+                  transform var(--dur-release) var(--spring), opacity var(--dur-release) var(--spring);
+    }
+    .pray-btn.is-pressed, .btn-lime.is-pressed {
+      transition: transform var(--dur-press) var(--ease-out-soft), opacity var(--dur-press) var(--ease-out-soft);
     }
     .pray-btn .cnt { font-weight: 600; }
-    .pray-btn[aria-pressed="true"] {
+    .pray-btn .lbl, .pray-btn .cnt { transition: opacity 120ms var(--ease-in-out); }
+    .pray-btn[aria-pressed="true"], .btn-lime {
       background: var(--lime);
       border-color: var(--lime);
       color: var(--ground);
     }
-    .pray-btn svg.icon { width: 18px; height: 18px; }
+    .pray-btn svg.icon, .btn-lime svg.icon { width: 18px; height: 18px; }
+    @keyframes iconPop {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+    .icon-pop { animation: iconPop 400ms var(--spring) both; }
+
+    /* ============ Evangelist ============ */
+    .link-line {
+      display: block;
+      color: var(--ink-muted);
+      font-size: 15px;
+      word-break: break-all;
+    }
+    .rank { color: var(--ink-muted); font-size: 15px; font-weight: 700; width: 18px; flex: none; }
+    .row-lead { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .row-lead .avatar { width: 32px; height: 32px; font-size: 11px; }
+    .settings-row .value.is-lime { color: var(--lime); }
+    .settings-row.is-user { box-shadow: inset 2px 0 0 0 var(--lime); }
+
+    /* ============ Reflect list ============ */
+    .reflect-item { display: block; width: 100%; text-align: left; }
+    .reflect-item .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .reflect-item .state { display: flex; align-items: center; gap: 6px; flex: none; }
+    .reflect-item .state svg.icon { width: 18px; height: 18px; }
+    .reflect-item .state.done { color: var(--lime); }
+    .reflect-item .state.current { color: var(--lime); }
+    .reflect-item .state.locked { color: var(--ink-muted); }
+    .reflect-item .rtitle { margin-top: 10px; color: var(--ink); }
+    .reflect-item .rmeta { display: block; margin-top: 6px; color: var(--ink-muted); font-size: 14px; }
+    .reflect-item.is-locked { opacity: 0.55; }
+    .reflect-item.is-locked.is-pressed { opacity: 0.5; }
 
     /* ============ Settings ============ */
     .settings-top { display: flex; align-items: center; gap: 4px; margin-top: 16px; }
@@ -535,7 +726,7 @@
     }
     .settings-row {
       width: 100%;
-      height: 56px;
+      min-height: 56px;
       display: flex; align-items: center; justify-content: space-between; gap: 16px;
       padding: 0 16px;
       text-align: left;
@@ -550,8 +741,9 @@
       background: var(--dim);
       position: relative;
       flex: none;
-      transition: background 0.15s ease;
+      transition: background 160ms var(--ease-in-out), transform var(--dur-release) var(--spring), opacity var(--dur-release) var(--spring);
     }
+    .toggle.is-pressed { transition: transform var(--dur-press) var(--ease-out-soft), opacity var(--dur-press) var(--ease-out-soft); }
     .toggle::after {
       content: '';
       position: absolute;
@@ -559,7 +751,7 @@
       width: 21px; height: 21px;
       border-radius: 50%;
       background: var(--ink);
-      transition: transform 0.15s ease, background 0.15s ease;
+      transition: transform var(--dur-release) var(--spring), background 160ms var(--ease-in-out);
     }
     .toggle[aria-checked="true"] { background: var(--lime); }
     .toggle[aria-checked="true"]::after { transform: translateX(19px); background: var(--ground); }
@@ -603,10 +795,68 @@
     }
     .nav-item svg.icon { width: 23px; height: 23px; }
     .nav-item .lbl { font-size: 11px; font-weight: 600; white-space: nowrap; line-height: 1; }
+    /* Active colour change is instant, never animated. */
     .nav-item[aria-current="page"] { color: var(--lime); }
+
+    /* ============ Toast ============ */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(var(--nav-clearance) + 8px);
+      z-index: 70;
+      background: var(--raised);
+      border: 1px solid var(--hairline);
+      color: var(--ink);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transform: translate(-50%, 16px);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+      transition: opacity var(--dur-release) var(--ease-out-soft), transform var(--dur-release) var(--ease-out-soft);
+    }
+    .toast.hide {
+      opacity: 0;
+      transition: opacity 200ms var(--ease-in-out);
+    }
 
     @media (min-width: 480px) {
       .shelf, .filters { margin-right: 0; }
+    }
+
+    /* ============ Reduced motion ============
+       Every transform animation off. Opacity fades kept, capped at 120ms. */
+    @media (prefers-reduced-motion: reduce) {
+      button, [data-press], .filter, .pray-btn, .btn-lime, .toggle { transition: none !important; }
+      button.is-pressed, [data-press].is-pressed { transform: none !important; opacity: 1 !important; }
+      .path-node.is-pressed { transform: translate(-50%, -50%) !important; }
+
+      .rise-in, .path-node.rise-node, .path-node.just-completed,
+      .path-node .fill-burst, .path-svg path.draw-in,
+      .path-node.today.rise-node::after, .path-node.today.rise-node::before,
+      .icon-pop { animation: none !important; }
+      .path-node.today::before { animation: none !important; opacity: 0.6; }
+
+      .screen.enter-anim { transition: opacity 120ms linear !important; }
+      .screen.enter-anim.entering { transform: none !important; opacity: 0; }
+      .screen.leaving-active { transform: none !important; transition: opacity 120ms linear !important; }
+
+      .overlay.anim { transition: opacity 120ms linear !important; }
+      .overlay.from-bottom { transform: none !important; opacity: 0; }
+      .overlay.snap-back, .overlay.dragging { transition: none !important; }
+      #main.push-anim { transition: none !important; }
+      #main.pushed { transform: none !important; opacity: 1 !important; }
+
+      .toggle::after { transition: none !important; }
+      .goal-row .fill { transition: none !important; }
+      #filter-underline.anim { transition: none !important; }
+      .toast, .toast.show { transform: translate(-50%, 0) !important; transition: opacity 120ms linear !important; }
     }
   </style>
 </head>
@@ -638,6 +888,8 @@
       <symbol id="i-send" viewBox="0 0 24 24"><path d="M20.5 3.5 3.5 10l6.5 2.5L12.5 19l8-15.5z"/><path d="M10 12.5 20.5 3.5"/></symbol>
       <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m5.5 17.5 4.5-4 3 2.5 3.5-3.5 2.5 2.5"/></symbol>
       <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14.5 8V5.5a1.5 1.5 0 0 0-1.5-1.5H6.5A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20H13a1.5 1.5 0 0 0 1.5-1.5V16"/><path d="M9.5 12h11M17 8.5l3.5 3.5-3.5 3.5"/></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13.5a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M14 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M15.5 6.5A2.5 2.5 0 0 0 13 4H6.5A2.5 2.5 0 0 0 4 6.5V13a2.5 2.5 0 0 0 2.5 2.5"/></symbol>
     </defs>
   </svg>
 
@@ -664,7 +916,7 @@
         <h2 class="t-subhead">Peace</h2>
       </div>
 
-      <div class="path-wrap" id="path-wrap">
+      <div class="path-wrap" id="path-wrap" data-no-stagger>
         <svg class="path-svg" id="path-svg" aria-hidden="true" preserveAspectRatio="none"></svg>
         <!-- nodes injected by JS -->
       </div>
@@ -672,21 +924,65 @@
       <span class="t-caption shelf-cap">Pick up where you left off</span>
       <div class="shelf" id="shelf" role="list" aria-label="Pick up where you left off"></div>
 
-      <button class="invite-row" type="button">
+      <button class="invite-row" type="button" data-go="evangelist">
         <span>2 more invites and your next month is free</span>
         <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg>
       </button>
     </section>
 
+    <!-- ============ SCREEN: EVANGELIST ============ -->
+    <section id="screen-evangelist" class="screen screen-evangelist" role="region" aria-label="Evangelist" aria-hidden="true">
+      <div class="status-strip" data-status-strip></div>
+
+      <div class="title-row">
+        <h1 class="t-headline">Evangelist</h1>
+      </div>
+
+      <div class="goal-row">
+        <span class="t-caption cap" id="ev-goal-cap">4 of 5 toward your next free month</span>
+        <div class="bar-line">
+          <div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="5" aria-valuenow="4" aria-label="Invites toward your next free month">
+            <div class="fill" id="ev-goal-fill" style="transform: scaleX(0.8)"></div>
+          </div>
+        </div>
+        <span class="goal-sub">1 more to go</span>
+      </div>
+
+      <div class="card" style="margin-top: 20px">
+        <span class="link-line" id="ev-link">soma.digital/i/acar</span>
+        <button class="btn-lime" type="button" id="ev-copy">
+          <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>
+          Copy link
+        </button>
+      </div>
+
+      <span class="t-caption settings-group-cap">Your invites</span>
+      <div class="settings-group" id="ev-invites"></div>
+
+      <span class="t-caption settings-group-cap">This month</span>
+      <div class="settings-group" id="ev-board"></div>
+    </section>
+
+    <!-- ============ SCREEN: REFLECT (devotional list) ============ -->
+    <section id="screen-reflect" class="screen screen-reflect" role="region" aria-label="Reflect" aria-hidden="true">
+      <div class="status-strip" data-status-strip></div>
+
+      <div class="title-row">
+        <h1 class="t-headline">Reflect</h1>
+      </div>
+
+      <div class="card-list" id="reflect-list"></div>
+    </section>
+
     <!-- ============ SCREEN: DEVOTIONAL DETAIL ============ -->
-    <section id="screen-detail" class="screen screen-detail" role="region" aria-label="Devotional detail">
+    <section id="screen-detail" class="screen screen-detail" role="region" aria-label="Devotional detail" aria-hidden="true">
       <div class="hero">
         <div class="ph" aria-label="Devotional artwork placeholder" role="img">
           <svg class="icon" style="width:40px;height:40px" aria-hidden="true"><use href="#i-image"/></svg>
         </div>
         <div class="scrim"></div>
         <div class="hero-toolbar">
-          <button class="icon-btn" type="button" data-nav-to="home" aria-label="Back to Home">
+          <button class="icon-btn" type="button" data-go="reflect" aria-label="Back to Reflect">
             <svg class="icon" aria-hidden="true"><use href="#i-chev-left"/></svg>
           </button>
           <div class="group">
@@ -702,10 +998,10 @@
       </div>
 
       <div class="day-progress">
-        <div class="track" role="progressbar" aria-valuenow="15" aria-valuemin="1" aria-valuemax="21" aria-label="Plan progress: day 15 of 21">
-          <div class="fill" style="width: 71.4%"></div>
+        <div class="track" role="progressbar" id="detail-track" aria-valuenow="15" aria-valuemin="1" aria-valuemax="21" aria-label="Plan progress">
+          <div class="fill" id="detail-fill" style="transform: scaleX(0.714)"></div>
         </div>
-        <span class="t-caption cap">Day 15 of 21</span>
+        <span class="t-caption cap" id="detail-day-cap">Day 15 of 21</span>
       </div>
 
       <blockquote class="scripture">
@@ -730,21 +1026,16 @@
         <p class="t-body">&ldquo;God, I release my tight grip on tomorrow. Help me to trade my anxiety for your peace, trusting that you are present in the details of my life. Amen.&rdquo;</p>
       </div>
 
-      <button class="btn-primary" type="button">Mark day 15 complete</button>
+      <button class="btn-primary" type="button" id="complete-btn">Mark day 15 complete</button>
 
       <div class="discuss-row">
         <span class="who">9 people are discussing this today</span>
-        <button class="link-coral" type="button" data-nav-to="connect">Talk about this</button>
+        <button class="link-coral" type="button" data-go="connect">Talk about this</button>
       </div>
     </section>
 
-    <!-- ============ SCREEN: KINGDOM SCROLLING ============ -->
-    <section id="screen-kingdom" class="screen screen-kingdom" role="region" aria-label="Kingdom Scrolling">
-      <div class="reel" id="reel" aria-label="Kingdom Scrolling video feed"></div>
-    </section>
-
     <!-- ============ SCREEN: CONNECT ============ -->
-    <section id="screen-connect" class="screen screen-connect" role="region" aria-label="Connect">
+    <section id="screen-connect" class="screen screen-connect" role="region" aria-label="Connect" aria-hidden="true">
       <div class="status-strip" data-status-strip></div>
 
       <div class="title-row">
@@ -754,13 +1045,15 @@
         </button>
       </div>
 
-      <div class="filters" role="tablist" aria-label="Conversation topics" id="filters"></div>
+      <div class="filters" role="tablist" aria-label="Conversation topics" id="filters">
+        <div id="filter-underline" aria-hidden="true"></div>
+      </div>
 
       <div class="card-list" id="convo-list"></div>
     </section>
 
     <!-- ============ SCREEN: PRAY ============ -->
-    <section id="screen-pray" class="screen screen-pray" role="region" aria-label="Pray">
+    <section id="screen-pray" class="screen screen-pray" role="region" aria-label="Pray" aria-hidden="true">
       <div class="status-strip" data-status-strip></div>
 
       <div class="title-row">
@@ -774,7 +1067,7 @@
         <span class="t-caption cap">Today's goal</span>
         <div class="bar-line">
           <div class="track" role="progressbar" id="goal-track" aria-valuemin="0" aria-valuemax="5" aria-valuenow="3" aria-label="Today's prayer goal">
-            <div class="fill" id="goal-fill" style="width: 60%"></div>
+            <div class="fill" id="goal-fill" style="transform: scaleX(0.6)"></div>
           </div>
           <span class="count" id="goal-count">3 of 5</span>
         </div>
@@ -782,11 +1075,13 @@
 
       <div class="card-list" id="pray-list"></div>
     </section>
+  </main>
 
-    <!-- ============ SCREEN: SETTINGS ============ -->
-    <section id="screen-settings" class="screen screen-settings" role="region" aria-label="Settings">
+  <!-- ============ OVERLAY: SETTINGS ============ -->
+  <section id="overlay-settings" class="overlay" role="dialog" aria-modal="true" aria-label="Settings" aria-hidden="true">
+    <div class="overlay-inner screen-settings">
       <div class="settings-top">
-        <button class="icon-btn" type="button" data-nav-back aria-label="Back">
+        <button class="icon-btn" type="button" id="settings-back" aria-label="Close Settings">
           <svg class="icon" aria-hidden="true"><use href="#i-chev-left"/></svg>
         </button>
         <h1 class="t-display">Settings</h1>
@@ -807,18 +1102,23 @@
           Sign out
         </button>
       </div>
-    </section>
-  </main>
+    </div>
+  </section>
+
+  <!-- ============ OVERLAY: KINGDOM SCROLLING ============ -->
+  <section id="overlay-scrolling" class="overlay" role="dialog" aria-modal="true" aria-label="Kingdom Scrolling" aria-hidden="true">
+    <div class="reel" id="reel" aria-label="Kingdom Scrolling video feed"></div>
+  </section>
 
   <!-- ============ Nav island ============ -->
   <nav class="nav-island" id="nav-island" aria-label="Primary">
     <button class="nav-item" type="button" data-tab="home" aria-current="page">
       <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span class="lbl">Home</span>
     </button>
-    <button class="nav-item" type="button" data-tab="kingdom">
+    <button class="nav-item" type="button" data-tab="evangelist">
       <svg class="icon" aria-hidden="true"><use href="#i-megaphone"/></svg><span class="lbl">Evangelist</span>
     </button>
-    <button class="nav-item" type="button" data-tab="detail">
+    <button class="nav-item" type="button" data-tab="reflect">
       <svg class="icon" aria-hidden="true"><use href="#i-book"/></svg><span class="lbl">Reflect</span>
     </button>
     <button class="nav-item" type="button" data-tab="pray">
@@ -828,6 +1128,8 @@
       <svg class="icon" aria-hidden="true"><use href="#i-people"/></svg><span class="lbl">Connect</span>
     </button>
   </nav>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
   'use strict';
@@ -840,7 +1142,7 @@
      ========================================================================== */
   const SOMA_SAMPLE_DATA = {
     user: { name: 'Acar Yildiz', initials: 'AY', email: 'acar@somadigital.app', plan: 'Free' },
-    stats: { streak: 12, prayers: '2,347', invites: 4 },
+    stats: { streak: 12, prayers: 2347, invites: 4 },
     plan: {
       name: 'Peace',
       week: 'Week 3',
@@ -855,10 +1157,39 @@
       { title: 'The Architecture of Faith', dur: '15 min' },
       { title: 'Deep Waters', dur: '20 min' }
     ],
+    // Reflect list — the devotional library view for the current plan week.
+    devotionals: [
+      { day: 13, title: 'Anxiety and the present moment', ref: 'Matthew 6:34', dur: '7 min' },
+      { day: 14, title: 'When stillness feels unproductive', ref: 'Psalm 46:10', dur: '9 min' },
+      { day: 15, title: 'The peace that guards your heart', ref: 'Philippians 4:6-7', dur: '8 min' },
+      { day: 16, title: 'Peace with people you disagree with', ref: 'Romans 12:18', dur: '10 min' },
+      { day: 17, title: 'Rest as an act of trust', ref: 'Hebrews 4:9-11', dur: '8 min' },
+      { day: 18, title: 'Carrying peace into Monday', ref: 'Colossians 3:15', dur: '11 min' }
+    ],
     videos: [
       { channel: 'Life.Church', title: 'Instead of a Sign, God Might Do This', likes: '12K', comments: '428', shares: '1.2K' },
       { channel: 'Desiring God', title: 'Finding Joy In Every Moment', likes: '8.4K', comments: '210', shares: '960' }
     ],
+    // Evangelist — invite and referral pillar. 4 joined matches the status strip.
+    evangelist: {
+      converted: 4,
+      target: 5,
+      link: 'soma.digital/i/acar',
+      invites: [
+        { name: 'Marcus', initials: 'MT', accent: 'sky', joined: true },
+        { name: 'Sarah', initials: 'SJ', accent: 'coral', joined: true },
+        { name: 'Daniel', initials: 'DO', accent: 'lime', joined: true },
+        { name: 'Elena', initials: 'ER', accent: 'sky', joined: true },
+        { name: 'David', initials: 'DC', accent: 'coral', joined: false }
+      ],
+      leaderboard: [
+        { rank: 1, name: 'Grace Adeyemi', initials: 'GA', accent: 'lime', count: 12 },
+        { rank: 2, name: 'Joel Mwangi', initials: 'JM', accent: 'sky', count: 9 },
+        { rank: 3, name: 'Priya Nair', initials: 'PN', accent: 'coral', count: 6 },
+        { rank: 4, name: 'Acar Yildiz', initials: 'AY', accent: 'lime', count: 4, isUser: true },
+        { rank: 5, name: 'Tomas Silva', initials: 'TS', accent: 'sky', count: 3 }
+      ]
+    },
     filters: ['Daily life', 'Scripture', 'Doubt', 'Prayer'],
     selectedFilter: 1,
     conversations: [
@@ -919,6 +1250,8 @@
   const D = SOMA_SAMPLE_DATA;
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+  const reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced = () => reducedQuery.matches;
 
   function icon(name, cls) {
     return '<svg class="icon' + (cls ? ' ' + cls : '') + '" aria-hidden="true"><use href="#i-' + name + '"/></svg>';
@@ -926,17 +1259,82 @@
   function avatarHTML(initials, accent, size, fs) {
     return '<span class="avatar accent-' + (accent || 'lime') + '" aria-hidden="true" style="width:' + size + 'px;height:' + size + 'px;font-size:' + fs + 'px">' + initials + '</span>';
   }
+  function fmt(n) { return n.toLocaleString('en-US'); }
 
-  /* ============ Status strip (identical on Home, Reflect, Pray, Connect) ============ */
+  /* ============ Haptics ============
+     Vibration API only. iOS Safari does not implement it, so on iPhone the
+     feedback is visual only — no library, no workaround. */
+  const canVibrate = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+  function haptic(ms) {
+    if (!canVibrate) return;
+    try { navigator.vibrate(ms); } catch (e) { /* ignore */ }
+  }
+
+  /* ============ Toast ============ */
+  let toastTimer = null, toastTimer2 = null;
+  function toast(msg) {
+    const el = $('#toast');
+    clearTimeout(toastTimer); clearTimeout(toastTimer2);
+    el.textContent = msg;
+    el.classList.remove('show', 'hide');
+    void el.offsetHeight;              // flush the hidden state so the fade always runs
+    el.classList.add('show');
+    toastTimer = setTimeout(() => {
+      el.classList.remove('show');
+      el.classList.add('hide');
+      toastTimer2 = setTimeout(() => el.classList.remove('hide'), 220);
+    }, 1800);
+  }
+
+  /* ============ Cross-fade a text value ============ */
+  function crossfadeText(el, text) {
+    if (!el) return;
+    if (reduced()) { el.textContent = text; return; }
+    el.classList.add('fade-num');
+    el.style.opacity = '0';
+    setTimeout(() => {
+      el.textContent = text;
+      el.style.opacity = '';
+      el.classList.remove('fade-num');
+    }, 120);
+  }
+
+  /* ============ Press feedback ============
+     One delegated handler. Fast in on pointerdown, spring release after.
+     Never gates navigation — click fires independently on pointerup. */
+  const PRESS_SEL = 'button, [data-press]';
+  let pressed = null;
+  function releasePress() {
+    if (!pressed) return;
+    const el = pressed;
+    pressed = null;
+    el.classList.remove('is-pressed');
+    el.classList.add('is-releasing');
+    setTimeout(() => el.classList.remove('is-releasing'), 300);
+  }
+  document.addEventListener('pointerdown', (e) => {
+    const el = e.target.closest(PRESS_SEL);
+    if (!el || el.disabled) return;
+    releasePress();
+    pressed = el;
+    el.classList.add('is-pressed');
+  }, { passive: true });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) =>
+    document.addEventListener(ev, releasePress, { passive: true })
+  );
+
+  /* ============ Status strip ============ */
   function renderStatusStrips() {
     const html =
       '<div class="status-item streak"><span class="stat">' + icon('flame') + '<span class="num">' + D.stats.streak + '</span></span><span class="t-caption cap">Day streak</span></div>' +
-      '<div class="status-item"><span class="stat">' + icon('circle') + '<span class="num">' + D.stats.prayers + '</span></span><span class="t-caption cap">Prayers</span></div>' +
+      '<div class="status-item"><span class="stat">' + icon('circle') + '<span class="num" data-prayers>' + fmt(D.stats.prayers) + '</span></span><span class="t-caption cap">Prayers</span></div>' +
       '<div class="status-item"><span class="stat">' + icon('circle') + '<span class="num">' + D.stats.invites + '</span></span><span class="t-caption cap">Invites</span></div>';
     $$('[data-status-strip]').forEach((el) => { el.innerHTML = html; });
   }
 
   /* ============ Home path ============ */
+  let pendingComplete = null;
+
   function renderPath() {
     const wrap = $('#path-wrap');
     const svg = $('#path-svg');
@@ -957,31 +1355,35 @@
       y: topPad + i * spacing
     }));
 
-    let d = 'M ' + pts[0].x + ' ' + pts[0].y;
+    // One path per segment so a single connector can be re-drawn on completion.
+    let segs = [];
     for (let i = 1; i < pts.length; i++) {
       const a = pts[i - 1], b = pts[i], my = (a.y + b.y) / 2;
-      d += ' C ' + a.x + ' ' + my + ', ' + b.x + ' ' + my + ', ' + b.x + ' ' + b.y;
+      segs.push('<path data-seg="' + (i - 1) + '" d="M ' + a.x + ' ' + a.y +
+        ' C ' + a.x + ' ' + my + ', ' + b.x + ' ' + my + ', ' + b.x + ' ' + b.y + '"/>');
     }
-    svg.innerHTML = '<path d="' + d + '"/>';
+    svg.innerHTML = segs.join('');
 
-    pts.forEach((p) => {
+    pts.forEach((p, idx) => {
       const isToday = p.day === D.plan.todayDay;
       const done = p.day < D.plan.todayDay;
       const milestone = p.day % D.plan.milestoneEvery === 0;
-      const el = document.createElement(isToday ? 'button' : (done ? 'button' : 'div'));
+      const el = document.createElement(isToday || done ? 'button' : 'div');
       el.className = 'path-node' + (isToday ? ' today' : done ? ' done' : ' locked') + (milestone ? ' milestone' : '');
       el.style.left = p.x + 'px';
       el.style.top = p.y + 'px';
+      el.dataset.day = String(p.day);
+      el.dataset.idx = String(idx);
       if (isToday) {
         el.type = 'button';
         el.setAttribute('aria-label', 'Day ' + p.day + ', today: ' + D.plan.today.title + '. Start devotional.');
         el.innerHTML = '<span class="start-pill" aria-hidden="true">Start</span>' + icon('play');
-        el.addEventListener('click', () => showScreen('detail'));
+        el.addEventListener('click', () => go('detail'));
       } else if (done) {
         el.type = 'button';
         el.setAttribute('aria-label', 'Day ' + p.day + ', completed');
         el.innerHTML = milestone ? '<span class="hex-inner">' + icon('check') + '</span>' : icon('check');
-        el.addEventListener('click', () => showScreen('detail'));
+        el.addEventListener('click', () => go('detail'));
       } else {
         el.setAttribute('role', 'img');
         el.setAttribute('aria-label', 'Day ' + p.day + ', locked' + (milestone ? ', milestone' : ''));
@@ -1000,14 +1402,78 @@
     });
   }
 
+  /* Path entrance: stagger down the trail; today's node lands last. */
+  function animatePath(run) {
+    const wrap = $('#path-wrap');
+    const nodes = $$('.path-node', wrap);
+    wrap.classList.remove('anim-hint');
+    nodes.forEach((n) => n.classList.remove('rise-node'));
+    if (!run || reduced()) return;
+    const others = nodes.filter((n) => !n.classList.contains('today'));
+    const today = nodes.find((n) => n.classList.contains('today'));
+    others.forEach((n, i) => n.style.setProperty('--pi', String(i)));
+    if (today) today.style.setProperty('--pi', String(others.length));
+    wrap.classList.add('anim-hint');
+    void wrap.offsetWidth;
+    nodes.forEach((n) => n.classList.add('rise-node'));
+    // Clear on a timer, not animationend: a backgrounded tab never fires it, and a
+    // held `both` fill would keep overriding the press-feedback transform.
+    setTimeout(() => {
+      wrap.classList.remove('anim-hint');
+      nodes.forEach((n) => n.classList.remove('rise-node'));
+    }, nodes.length * 40 + 1200);
+  }
+
+  /* Completion: fill the node from outline to solid lime, draw the connector. */
+  function playCompletion(day) {
+    const wrap = $('#path-wrap');
+    const doneNode = $('.path-node[data-day="' + day + '"]', wrap);
+    const nextNode = $('.path-node[data-day="' + (day + 1) + '"]', wrap);
+    if (doneNode) {
+      doneNode.classList.add('just-completed');
+      doneNode.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' });
+    }
+    if (reduced()) return;
+    if (nextNode) {
+      const burst = document.createElement('span');
+      burst.className = 'fill-burst';
+      nextNode.insertBefore(burst, nextNode.firstChild);
+      setTimeout(() => burst.remove(), 460);
+    }
+    if (doneNode) {
+      const seg = $('#path-svg path[data-seg="' + doneNode.dataset.idx + '"]');
+      if (seg) {
+        seg.classList.add('draw-in');
+        setTimeout(() => seg.classList.remove('draw-in'), 460);
+      }
+    }
+  }
+
+  function completeDay() {
+    const day = D.plan.todayDay;
+    if (day >= D.plan.totalDays) {
+      toast('Plan complete');
+      haptic(30);
+      return;
+    }
+    D.plan.todayDay = day + 1;
+    haptic(30);
+    toast('Day ' + day + ' complete');
+    renderDetail();
+    renderReflectList();
+    pendingComplete = day;
+    go('home');
+  }
+
   /* ============ Home shelf ============ */
   function renderShelf() {
     $('#shelf').innerHTML = D.shelf.map((c) =>
-      '<button class="shelf-card" type="button" role="listitem" aria-label="' + c.title + ', ' + c.dur + '">' +
+      '<button class="shelf-card" type="button" role="listitem" aria-label="' + c.title + ', ' + c.dur + '. Open Kingdom Scrolling.">' +
         '<div class="ph on-raised" style="height:78px">' + icon('image') + '</div>' +
         '<span class="txt"><span class="title">' + c.title + '</span><span class="t-caption dur">' + c.dur + '</span></span>' +
       '</button>'
     ).join('');
+    $$('#shelf .shelf-card').forEach((b) => b.addEventListener('click', () => go('scrolling')));
   }
 
   /* ============ Kingdom Scrolling ============ */
@@ -1027,45 +1493,145 @@
     ).join('');
   }
 
-  /* ============ Connect ============ */
-  function renderFilters() {
-    $('#filters').innerHTML = D.filters.map((f, i) =>
-      '<button class="filter" type="button" role="tab" aria-selected="' + (i === D.selectedFilter) + '">' + f + '</button>'
+  /* ============ Evangelist ============ */
+  function renderEvangelist() {
+    const ev = D.evangelist;
+    $('#ev-goal-cap').textContent = ev.converted + ' of ' + ev.target + ' toward your next free month';
+    $('#ev-goal-fill').style.transform = 'scaleX(' + (ev.converted / ev.target) + ')';
+    $('#ev-link').textContent = ev.link;
+
+    $('#ev-invites').innerHTML = ev.invites.map((p) =>
+      '<div class="settings-row">' +
+        '<span class="row-lead">' + avatarHTML(p.initials, p.accent, 32, 11) +
+          '<span class="label">' + p.name + '</span></span>' +
+        '<span class="value' + (p.joined ? ' is-lime' : '') + '"><span class="t-caption">' + (p.joined ? 'Joined' : 'Invited') + '</span></span>' +
+      '</div>'
     ).join('');
-    $$('#filters .filter').forEach((btn, i) => {
-      btn.addEventListener('click', () => {
-        D.selectedFilter = i;
-        renderFilters();
+
+    $('#ev-board').innerHTML = ev.leaderboard.map((p) =>
+      '<div class="settings-row' + (p.isUser ? ' is-user' : '') + '"' + (p.isUser ? ' aria-label="Your rank"' : '') + '>' +
+        '<span class="row-lead"><span class="rank">' + p.rank + '</span>' +
+          avatarHTML(p.initials, p.accent, 32, 11) +
+          '<span class="label">' + p.name + '</span></span>' +
+        '<span class="value">' + p.count + ' invites</span>' +
+      '</div>'
+    ).join('');
+  }
+
+  /* ============ Reflect list ============ */
+  function renderReflectList() {
+    const today = D.plan.todayDay;
+    $('#reflect-list').innerHTML = D.devotionals.map((d) => {
+      const done = d.day < today, current = d.day === today, locked = d.day > today;
+      const state = done
+        ? '<span class="state done">' + icon('check') + '</span>'
+        : current
+          ? '<span class="state current"><span class="t-caption">Today</span></span>'
+          : '<span class="state locked">' + icon('lock') + '</span>';
+      return '<button class="card reflect-item' + (locked ? ' is-locked' : '') + '" type="button"' +
+        ' data-day="' + d.day + '" data-locked="' + locked + '"' +
+        ' aria-label="Day ' + d.day + ', ' + d.title + ', ' + d.ref + ', ' + d.dur +
+          (done ? ', completed' : current ? ', today' : ', locked') + '">' +
+        '<span class="top"><span class="t-caption" style="color:var(--ink-muted)">Day ' + d.day + '</span>' + state + '</span>' +
+        '<span class="t-subhead rtitle" style="display:block">' + d.title + '</span>' +
+        '<span class="rmeta">' + d.ref + ' · ' + d.dur + '</span>' +
+      '</button>';
+    }).join('');
+
+    $$('#reflect-list .reflect-item').forEach((b) => {
+      b.addEventListener('click', () => {
+        if (b.dataset.locked === 'true') {
+          toast('Day ' + b.dataset.day + ' unlocks after day ' + D.plan.todayDay);
+          return;
+        }
+        go('detail');
       });
     });
   }
 
+  /* ============ Devotional Detail ============ */
+  function renderDetail() {
+    const day = Math.min(D.plan.todayDay, D.plan.totalDays);
+    $('#detail-day-cap').textContent = 'Day ' + day + ' of ' + D.plan.totalDays;
+    $('#detail-fill').style.transform = 'scaleX(' + (day / D.plan.totalDays) + ')';
+    $('#detail-track').setAttribute('aria-valuenow', String(day));
+    $('#complete-btn').textContent = 'Mark day ' + day + ' complete';
+  }
+
+  /* ============ Connect ============ */
+  function renderFilters() {
+    const box = $('#filters');
+    const underline = $('#filter-underline');
+    box.querySelectorAll('.filter').forEach((n) => n.remove());
+    D.filters.forEach((f, i) => {
+      const b = document.createElement('button');
+      b.className = 'filter';
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(i === D.selectedFilter));
+      b.textContent = f;
+      b.addEventListener('click', () => selectFilter(i));
+      box.insertBefore(b, underline);
+    });
+    positionUnderline(false);
+  }
+
+  function selectFilter(i) {
+    if (i === D.selectedFilter) return;
+    D.selectedFilter = i;
+    haptic(10);
+    $$('#filters .filter').forEach((b, j) => b.setAttribute('aria-selected', String(j === i)));
+    positionUnderline(true);
+    const list = $('#convo-list');
+    renderConversations();
+    list.classList.remove('fade-swap');
+    void list.offsetWidth;
+    list.classList.add('fade-swap');
+  }
+
+  function positionUnderline(animate) {
+    const btns = $$('#filters .filter');
+    const sel = btns[D.selectedFilter];
+    const ul = $('#filter-underline');
+    if (!sel || !ul) return;
+    ul.classList.toggle('anim', !!animate);
+    ul.style.transform = 'translateX(' + sel.offsetLeft + 'px) scaleX(' + sel.offsetWidth + ')';
+  }
+
   function renderConversations() {
     $('#convo-list').innerHTML = D.conversations.map((c) =>
-      '<article class="card">' +
-        '<div class="convo-head">' +
+      '<button class="card convo-card" type="button" aria-label="' + c.title + ', by ' + c.name + ', ' + c.replies + ' replies">' +
+        '<span class="convo-head">' +
           avatarHTML(c.initials, c.accent, 28, 10) +
           '<span class="t-caption name">' + c.name + '</span>' +
           (c.moderator ? '<span class="t-caption mod">Moderator</span>' : '') +
           (c.pinned ? '<span class="pin" role="img" aria-label="Pinned">' + icon('pin') + '</span>' : '') +
-        '</div>' +
-        '<h3 class="t-subhead convo-title">' + c.title + '</h3>' +
-        '<p class="convo-preview">' + c.preview + '</p>' +
-        '<div class="convo-foot">' +
+        '</span>' +
+        '<span class="t-subhead convo-title" style="display:block">' + c.title + '</span>' +
+        '<span class="convo-preview" style="display:block">' + c.preview + '</span>' +
+        '<span class="convo-foot">' +
           '<span class="replies">' + icon('chat') + c.replies + '</span>' +
           '<span class="facepile" aria-hidden="true">' + c.faces.map((f, j) => avatarHTML(f, ['lime', 'sky', 'coral'][j % 3], 20, 8)).join('') + '</span>' +
           '<span class="when">' + c.when + '</span>' +
-        '</div>' +
-      '</article>'
+        '</span>' +
+      '</button>'
     ).join('');
+    $$('#convo-list .convo-card').forEach((b) =>
+      b.addEventListener('click', () => toast('Thread view is not in this prototype'))
+    );
   }
 
   /* ============ Pray ============ */
-  function renderGoal() {
-    const pct = Math.min(100, (D.goal.done / D.goal.target) * 100);
-    $('#goal-fill').style.width = pct + '%';
-    $('#goal-count').textContent = D.goal.done + ' of ' + D.goal.target;
+  function renderGoal(animate) {
+    const pct = Math.min(1, D.goal.done / D.goal.target);
+    const fill = $('#goal-fill');
+    if (!animate) fill.style.transition = 'none';
+    fill.style.transform = 'scaleX(' + pct + ')';
+    if (!animate) { void fill.offsetWidth; fill.style.transition = ''; }
     $('#goal-track').setAttribute('aria-valuenow', String(D.goal.done));
+    const label = D.goal.done + ' of ' + D.goal.target;
+    if (animate) crossfadeText($('#goal-count'), label);
+    else $('#goal-count').textContent = label;
   }
 
   function renderPray() {
@@ -1088,16 +1654,33 @@
     ).join('');
 
     $$('#pray-list .pray-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const r = D.requests.find((x) => x.id === btn.dataset.req);
-        r.praying = !r.praying;
-        r.count += r.praying ? 1 : -1;
-        if (r.praying && D.goal.done < D.goal.target) D.goal.done += 1;
-        else if (!r.praying && D.goal.done > 0) D.goal.done -= 1;
-        renderPray();
-        renderGoal();
-      });
+      btn.addEventListener('click', () => togglePraying(btn));
     });
+  }
+
+  /* All three respond together: card count, prayers total, daily goal bar. */
+  function togglePraying(btn) {
+    const r = D.requests.find((x) => x.id === btn.dataset.req);
+    if (!r) return;
+    r.praying = !r.praying;
+    r.count += r.praying ? 1 : -1;
+    D.stats.prayers += r.praying ? 1 : -1;
+    if (r.praying && D.goal.done < D.goal.target) D.goal.done += 1;
+    else if (!r.praying && D.goal.done > 0) D.goal.done -= 1;
+
+    haptic(10);
+    btn.setAttribute('aria-pressed', String(r.praying));
+    const svg = btn.querySelector('svg.icon');
+    if (svg && !reduced()) {
+      svg.classList.remove('icon-pop');
+      void svg.offsetWidth;
+      svg.classList.add('icon-pop');
+      setTimeout(() => svg.classList.remove('icon-pop'), 440);
+    }
+    crossfadeText(btn.querySelector('.lbl'), r.praying ? 'Praying' : 'I’m praying');
+    crossfadeText(btn.querySelector('.cnt'), '· ' + r.count + ' praying');
+    renderGoal(true);
+    $$('[data-prayers]').forEach((el) => crossfadeText(el, fmt(D.stats.prayers)));
   }
 
   /* ============ Settings ============ */
@@ -1121,62 +1704,364 @@
         const row = D.settings[+t.dataset.g].rows[+t.dataset.r];
         row.on = !row.on;
         t.setAttribute('aria-checked', String(row.on));
+        haptic(10);
       });
     });
   }
 
-  /* ============ Router ============ */
-  const SCREENS = ['home', 'detail', 'kingdom', 'connect', 'pray', 'settings'];
-  const NAV_ACTIVE = { home: 'home', detail: 'detail', connect: 'connect', pray: 'pray' };
-  const NAV_HIDDEN = { kingdom: true, settings: true };
-  let current = 'home';
-  let previous = 'home';
+  /* ==========================================================================
+     ROUTER — hash routing + real history stack
+     ========================================================================== */
+  const BASES = ['home', 'evangelist', 'reflect', 'detail', 'pray', 'connect'];
+  const OVERLAYS = ['settings', 'scrolling'];
+  const HASH_OF = {
+    home: '#home', evangelist: '#evangelist', reflect: '#reflect',
+    detail: '#reflect/devotional', pray: '#pray', connect: '#connect',
+    settings: '#settings', scrolling: '#scrolling'
+  };
+  const BASE_OF_HASH = {
+    '#home': 'home', '#evangelist': 'evangelist', '#reflect': 'reflect',
+    '#reflect/devotional': 'detail', '#pray': 'pray', '#connect': 'connect'
+  };
+  const NAV_TAB_OF = {
+    home: 'home', evangelist: 'evangelist', reflect: 'reflect',
+    detail: 'reflect', pray: 'pray', connect: 'connect'
+  };
 
-  function showScreen(id) {
-    if (!SCREENS.includes(id) || id === current) return;
-    previous = current;
-    current = id;
-    SCREENS.forEach((s) => {
-      const el = $('#screen-' + s);
-      el.classList.toggle('active', s === id);
-      el.setAttribute('aria-hidden', String(s !== id));
-    });
-    // Header right control
-    $('#header-avatar-btn').hidden = (id === 'kingdom' || id === 'settings');
-    $('#header-close-btn').hidden = (id !== 'kingdom');
-    // Nav island
-    const nav = $('#nav-island');
-    nav.classList.toggle('hidden', !!NAV_HIDDEN[id]);
-    $$('.nav-item', nav).forEach((item) => {
-      if (NAV_ACTIVE[id] === item.dataset.tab) item.setAttribute('aria-current', 'page');
-      else item.removeAttribute('aria-current');
-    });
-    window.scrollTo(0, 0);
-    if (id === 'home') renderPath();
+  const baseEl = (name) => $('#screen-' + name);
+  const overlayEl = (name) => $('#overlay-' + name);
+
+  let state = { base: 'home', overlay: null, depth: 0 };
+  let lastFocus = null;
+
+  function hashFor(s) { return s.overlay ? HASH_OF[s.overlay] : HASH_OF[s.base]; }
+
+  function stateFromHash(hash, fallbackBase) {
+    const h = (hash || '').toLowerCase();
+    if (h === '#settings') return { base: fallbackBase || 'home', overlay: 'settings' };
+    if (h === '#scrolling') return { base: fallbackBase || 'home', overlay: 'scrolling' };
+    return { base: BASE_OF_HASH[h] || 'home', overlay: null };
   }
 
-  $$('.nav-item').forEach((item) => {
-    item.addEventListener('click', () => showScreen(item.dataset.tab));
+  function go(name) {
+    let next;
+    if (OVERLAYS.includes(name)) {
+      if (state.overlay === name) return;
+      next = { base: state.base, overlay: name };
+    } else if (BASES.includes(name)) {
+      if (state.base === name && !state.overlay) return;
+      next = { base: name, overlay: null };
+    } else {
+      return;
+    }
+    const depth = state.depth + 1;
+    const from = state;
+    state = { base: next.base, overlay: next.overlay, depth };
+    history.pushState(state, '', hashFor(state));
+    applyState(state, { animate: true, from });
+  }
+
+  function closeOverlay() {
+    if (!state.overlay) return;
+    if (state.depth > 0) { history.back(); return; }
+    const from = state;
+    state = { base: from.base, overlay: null, depth: 0 };
+    history.replaceState(state, '', hashFor(state));
+    applyState(state, { animate: true, from });
+  }
+
+  window.addEventListener('popstate', (e) => {
+    const s = e.state && typeof e.state.depth === 'number'
+      ? e.state
+      : Object.assign(stateFromHash(location.hash, state.base), { depth: 0 });
+    const from = state;
+    state = { base: s.base, overlay: s.overlay || null, depth: s.depth || 0 };
+    applyState(state, { animate: true, from });
   });
-  $('#header-avatar-btn').addEventListener('click', () => showScreen('settings'));
-  $('#header-close-btn').addEventListener('click', () => showScreen('home'));
-  $$('[data-nav-to]').forEach((el) => el.addEventListener('click', () => showScreen(el.dataset.navTo)));
-  $$('[data-nav-back]').forEach((el) => el.addEventListener('click', () => showScreen(previous === 'settings' ? 'home' : previous)));
+
+  function applyState(next, opts) {
+    const from = opts.from;
+    const animate = opts.animate;
+    const baseChanged = !from || from.base !== next.base;
+    const overlayChanged = !from || (from.overlay || null) !== (next.overlay || null);
+
+    if (baseChanged) transitionBase(from ? from.base : null, next.base, animate && !next.overlay && !(from && from.overlay));
+    if (overlayChanged) {
+      if (next.overlay) presentOverlay(next.overlay, animate);
+      else if (from && from.overlay) dismissOverlay(from.overlay, animate);
+    }
+    syncChrome(next);
+  }
+
+  function transitionBase(fromName, toName, animate) {
+    const toEl = baseEl(toName);
+    const fromEl = fromName && fromName !== toName ? baseEl(fromName) : null;
+    if (!toEl) return;
+
+    if (!animate || reduced()) {
+      if (fromEl) {
+        fromEl.classList.remove('active', 'leaving', 'leaving-active');
+        fromEl.style.top = '';
+        fromEl.setAttribute('aria-hidden', 'true');
+      }
+      toEl.classList.add('active');
+      toEl.setAttribute('aria-hidden', 'false');
+      window.scrollTo(0, 0);
+      if (reduced() && animate) {
+        toEl.classList.add('enter-anim', 'entering');
+        void toEl.offsetHeight;
+        toEl.classList.remove('entering');
+        setTimeout(() => toEl.classList.remove('enter-anim'), 200);
+      }
+      mountScreen(toName, false);
+      return;
+    }
+
+    const sy = window.scrollY;
+    if (fromEl) {
+      fromEl.classList.add('leaving');
+      fromEl.style.top = (-sy) + 'px';
+      void fromEl.offsetWidth;
+      fromEl.classList.add('leaving-active');
+      setTimeout(() => {
+        fromEl.classList.remove('leaving', 'leaving-active', 'active');
+        fromEl.style.top = '';
+        fromEl.setAttribute('aria-hidden', 'true');
+      }, 320);
+    }
+
+    toEl.classList.add('active', 'enter-anim', 'entering');
+    toEl.setAttribute('aria-hidden', 'false');
+    window.scrollTo(0, 0);
+    void toEl.offsetHeight;            // flush the 'from' state, then start in the same task
+    toEl.classList.remove('entering');
+    setTimeout(() => toEl.classList.remove('enter-anim'), 360);
+    mountScreen(toName, true);
+  }
+
+  /* Content entrance: direct children fade and rise, 30ms stagger, cap 8. */
+  function mountScreen(name, stagger) {
+    const el = baseEl(name);
+    if (!el) return;
+    const kids = Array.from(el.children).filter((c) => !c.hasAttribute('data-no-stagger'));
+    kids.forEach((c) => c.classList.remove('rise-in'));
+    if (stagger && !reduced()) {
+      void el.offsetWidth;
+      kids.forEach((c, i) => {
+        c.style.setProperty('--si', String(Math.min(i, 7)));
+        c.classList.add('rise-in');
+        c.addEventListener('animationend', function onEnd() {
+          c.classList.remove('rise-in');
+          c.removeEventListener('animationend', onEnd);
+        });
+      });
+      // Timer fallback: animationend never fires in a backgrounded tab, and a held
+      // `both` fill would keep overriding press feedback on these children.
+      setTimeout(() => kids.forEach((c) => c.classList.remove('rise-in')), 8 * 30 + 400);
+    }
+    if (name === 'home') {
+      renderPath();
+      animatePath(stagger);
+      if (pendingComplete !== null) {
+        const day = pendingComplete;
+        pendingComplete = null;
+        setTimeout(() => playCompletion(day), stagger && !reduced() ? 260 : 0);
+      }
+    }
+    if (name === 'connect') positionUnderline(false);
+  }
+
+  function presentOverlay(name, animate) {
+    const el = overlayEl(name);
+    const main = $('#main');
+    if (!el) return;
+    lastFocus = document.activeElement;
+    el.classList.add('open');
+    el.setAttribute('aria-hidden', 'false');
+    main.setAttribute('aria-hidden', 'true');
+    main.inert = true;
+    $('#nav-island').classList.add('hidden');
+
+    if (!animate) {
+      el.classList.remove('from-bottom', 'anim');
+      focusOverlay(name);
+      return;
+    }
+    el.classList.add('from-bottom');
+    el.classList.add('anim');
+    main.classList.add('push-anim');
+    void el.offsetHeight;              // flush the off-screen state
+    el.classList.remove('from-bottom');
+    main.classList.add('pushed');
+    setTimeout(() => {
+      el.classList.remove('anim');
+      focusOverlay(name);
+    }, 400);
+  }
+
+  function focusOverlay(name) {
+    const el = overlayEl(name);
+    const target = name === 'settings' ? $('#settings-back') : $('#header-close-btn');
+    if (target && el.classList.contains('open')) target.focus({ preventScroll: true });
+  }
+
+  function dismissOverlay(name, animate) {
+    const el = overlayEl(name);
+    const main = $('#main');
+    if (!el) return;
+    el.setAttribute('aria-hidden', 'true');
+    main.removeAttribute('aria-hidden');
+    main.inert = false;
+
+    const finish = () => {
+      el.classList.remove('open', 'anim', 'snap-back', 'dragging');
+      el.style.transform = '';
+      el.scrollTop = 0;
+      main.classList.remove('push-anim');
+    };
+    if (!animate || reduced()) {
+      main.classList.remove('pushed');
+      finish();
+    } else {
+      el.classList.add('anim');
+      main.classList.add('push-anim');
+      void el.offsetHeight;
+      el.style.transform = 'translateY(100%)';
+      main.classList.remove('pushed');
+      setTimeout(finish, 400);
+    }
+    if (lastFocus && document.contains(lastFocus)) {
+      lastFocus.focus({ preventScroll: true });
+      lastFocus = null;
+    }
+  }
+
+  function syncChrome(next) {
+    const overlay = next.overlay;
+    $('#header-avatar-btn').hidden = !!overlay;
+    $('#header-close-btn').hidden = overlay !== 'scrolling';
+    const island = $('#nav-island');
+    island.classList.toggle('hidden', !!overlay);
+    const tab = NAV_TAB_OF[next.base];
+    $$('.nav-item', island).forEach((item) => {
+      if (item.dataset.tab === tab) item.setAttribute('aria-current', 'page');
+      else item.removeAttribute('aria-current');
+    });
+  }
+
+  /* ============ Drag-to-dismiss (Settings only) ============ */
+  (function setupDrag() {
+    const el = overlayEl('settings');
+    let drag = null;
+    const THRESH = 120;
+
+    el.addEventListener('pointerdown', (e) => {
+      if (!el.classList.contains('open')) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (el.scrollTop > 0) return;
+      const r = el.getBoundingClientRect();
+      if (e.clientY - r.top > THRESH) return;
+      drag = { id: e.pointerId, y0: e.clientY, y: e.clientY, prevY: e.clientY, t: performance.now(), prevT: performance.now(), active: false };
+    }, { passive: true });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dy = e.clientY - drag.y0;
+      if (!drag.active) {
+        if (dy < 6) return;
+        drag.active = true;
+        el.classList.add('dragging');
+        el.classList.remove('snap-back');
+      }
+      drag.prevY = drag.y; drag.prevT = drag.t;
+      drag.y = e.clientY; drag.t = performance.now();
+      if (!reduced()) el.style.transform = 'translateY(' + Math.max(0, dy) + 'px)';
+    }, { passive: true });
+
+    // Non-passive so an active drag can cancel the overlay's own scrolling.
+    el.addEventListener('touchmove', (e) => {
+      if (drag && drag.active) e.preventDefault();
+    }, { passive: false });
+
+    function end(e, cancelled) {
+      if (!drag || (e && e.pointerId !== drag.id)) return;
+      const dy = Math.max(0, drag.y - drag.y0);
+      const dt = Math.max(1, drag.t - drag.prevT);
+      const v = (drag.y - drag.prevY) / dt;   // px per ms, downward positive
+      const wasActive = drag.active;
+      drag = null;
+      el.classList.remove('dragging');
+      if (!wasActive) return;
+      // A cancelled gesture (the browser took it over) always snaps back;
+      // only a real release can complete the dismissal.
+      if (!cancelled && (dy > THRESH || v > 0.5)) {
+        haptic(20);
+        closeOverlay();
+      } else {
+        el.classList.add('snap-back');
+        el.style.transform = '';
+        setTimeout(() => el.classList.remove('snap-back'), 300);
+      }
+    }
+    window.addEventListener('pointerup', (e) => end(e, false), { passive: true });
+    window.addEventListener('pointercancel', (e) => end(e, true), { passive: true });
+  })();
+
+  /* ============ Wiring ============ */
+  $$('.nav-item').forEach((item) => {
+    item.addEventListener('click', () => { haptic(10); go(item.dataset.tab); });
+  });
+  $('#header-avatar-btn').addEventListener('click', () => { haptic(10); go('settings'); });
+  $('#header-close-btn').addEventListener('click', () => { haptic(20); closeOverlay(); });
+  $('#settings-back').addEventListener('click', () => { haptic(20); closeOverlay(); });
+  $$('[data-go]').forEach((el) => el.addEventListener('click', () => go(el.dataset.go)));
+  $('#complete-btn').addEventListener('click', completeDay);
+  $('#ev-copy').addEventListener('click', () => {
+    haptic(10);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText('https://' + D.evangelist.link).catch(() => {});
+    }
+    toast('Link copied');
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && state.overlay) { e.preventDefault(); closeOverlay(); }
+  });
 
   /* ============ Boot ============ */
   renderStatusStrips();
   renderShelf();
   renderReel();
+  renderEvangelist();
+  renderReflectList();
+  renderDetail();
   renderFilters();
   renderConversations();
-  renderGoal();
+  renderGoal(false);
   renderPray();
   renderSettings();
   renderPath();
+
+  state = Object.assign(stateFromHash(location.hash, 'home'), { depth: 0 });
+  history.replaceState(state, '', hashFor(state));
+  BASES.forEach((b) => {
+    const el = baseEl(b);
+    el.classList.toggle('active', b === state.base);
+    el.setAttribute('aria-hidden', String(b !== state.base));
+  });
+  applyState(state, { animate: false, from: null });
+  mountScreen(state.base, false);
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => positionUnderline(false));
+  }
   let resizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { if (current === 'home') renderPath(); }, 120);
+    resizeTimer = setTimeout(() => {
+      if (state.base === 'home' && !state.overlay) { renderPath(); }
+      positionUnderline(false);
+    }, 120);
   });
 
   if ('serviceWorker' in navigator) {
