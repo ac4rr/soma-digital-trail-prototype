@@ -1,5 +1,5 @@
 /* Soma Digital — Trail prototype service worker */
-const CACHE = 'soma-trail-v3';
+const CACHE = 'soma-trail-v4';
 const FONT_CACHE = 'soma-trail-fonts-v1';
 const SHELL = [
   './',

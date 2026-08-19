@@ -5,7 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Soma Digital</title>
   <meta name="description" content="Soma Digital — a daily spiritual discovery journey. Trail design prototype." />
-  <meta name="theme-color" content="#0D1220" />
+  <meta name="theme-color" content="#10141A" />
+  <script>
+    /* Applied before first paint so the theme never flashes. Session-only:
+       the choice lives in memory, nothing is stored. */
+    (function () {
+      window.__somaTheme = 'system';
+      var mq = window.matchMedia('(prefers-color-scheme: light)');
+      var resolve = function () {
+        var t = window.__somaTheme === 'system' ? (mq.matches ? 'light' : 'dark') : window.__somaTheme;
+        document.documentElement.setAttribute('data-theme', t);
+        return t;
+      };
+      window.__somaResolveTheme = resolve;
+      resolve();
+      mq.addEventListener('change', function () { if (window.__somaTheme === 'system') resolve(); });
+    })();
+  </script>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
@@ -18,18 +34,40 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <style>
     /* ============ Tokens ============ */
+    /* ---- Dark theme (default). Neutrals + roles. ---- */
     :root {
-      --ground: #0D1220;
-      --raised: #161D2E;
-      --dim: #2A3350;
-      --ink: #F2F5FA;
-      --ink-muted: #8B95AD;
-      --hairline: rgba(242, 245, 250, 0.10);
-      --lime: #C6F24E;
-      --coral: #FF7A59;
-      --sky: #4CC2FF;
-      --success: #C6F24E;
-      --danger: #FF6B6B;
+      --ground: #10141A;
+      --raised: #1A2028;
+      --dim: #262E38;
+      --ink: #EDEFF3;
+      --ink-muted: #9AA3AF;
+      --hairline: rgba(237, 239, 243, 0.10);
+
+      /* The five source colours, identical in both themes. */
+      --primary: #59CD90;
+      --today: #FAC05E;
+      --info: #3FA7D6;
+      --milestone: #EE6352;
+      --soft: #F79D84;
+      --danger: #EE6352;
+      /* Text on ANY of the five fills, both themes, every size. Never white. */
+      --on-fill: #12161B;
+
+      /* Colour-only theme variables (no lengths, so a theme can never move layout). */
+      --accent-text: var(--primary);      /* the five as text: allowed on dark only */
+      --today-text: var(--today);
+      --info-text: var(--info);
+      --milestone-text: var(--milestone);
+      --soft-text: var(--soft);
+      --danger-text: var(--danger);
+      --avatar-ink: currentColor;
+      --focus: #3FA7D6;
+      --glow-strong: rgba(250, 192, 94, 0.30);
+      --glow-halo: rgba(250, 192, 94, 0.25);
+      --island-shadow: rgba(0, 0, 0, 0.55);
+      --scrim-mid: rgba(16, 20, 26, 0.55);
+      --signout-edge: transparent;
+      --trail: var(--dim);
       --video-bg: #07090D;
 
       --radius-card: 20px;
@@ -48,6 +86,36 @@
       --dur-release: 260ms;
       --dur-screen: 320ms;
       --dur-overlay: 380ms;
+    }
+
+    /* ---- Light theme: COLOUR RE-DECLARATIONS ONLY. ----
+       Every value below is a colour or a reference to one. No length, no
+       weight, no timing — so a theme switch cannot move the layout.
+       The five colours keep their values but may no longer be used as text:
+       on this ground they measure 3.02 / 1.87 / 2.56 / 1.55 / 1.95 and all
+       fail, so every *-text role collapses to dark ink. */
+    :root[data-theme="light"] {
+      --ground: #F7F8FA;
+      --raised: #FFFFFF;
+      --dim: #E9ECF1;
+      --ink: #12161B;
+      --ink-muted: #5B6472;
+      --hairline: rgba(18, 22, 27, 0.10);
+
+      --accent-text: var(--ink);
+      --today-text: var(--ink);
+      --info-text: var(--ink);
+      --milestone-text: var(--ink);
+      --soft-text: var(--ink-muted);
+      --danger-text: var(--ink);
+      --avatar-ink: var(--ink);
+      --focus: #12161B;
+      --glow-strong: rgba(250, 192, 94, 0.55);
+      --glow-halo: rgba(250, 192, 94, 0.40);
+      --island-shadow: rgba(18, 22, 27, 0.12);
+      --scrim-mid: rgba(247, 248, 250, 0.55);
+      --signout-edge: var(--danger);
+      --trail: #C4CCD8;
     }
 
     /* ============ Reset & base ============ */
@@ -75,7 +143,7 @@
     }
     button, [data-press] { touch-action: manipulation; }
     :focus-visible {
-      outline: 2px solid var(--sky);
+      outline: 2px solid var(--focus);
       outline-offset: 2px;
       border-radius: 4px;
     }
@@ -145,9 +213,9 @@
       overflow: hidden;
       user-select: none;
     }
-    .avatar.accent-lime  { color: var(--lime); }
-    .avatar.accent-coral { color: var(--coral); }
-    .avatar.accent-sky   { color: var(--sky); }
+    .avatar.accent-lime  { color: var(--accent-text); }
+    .avatar.accent-coral { color: var(--soft-text); }
+    .avatar.accent-sky   { color: var(--info-text); }
     #header-avatar-btn { border-radius: 50%; }
     #header-avatar-btn .avatar { width: 32px; height: 32px; font-size: 12px; }
     #header-close-btn {
@@ -221,6 +289,20 @@
     #main.pushed { transform: scale(0.96); opacity: 0.6; }
     #overlay-settings { background: var(--ground); }
     #overlay-settings .overlay-inner { padding-bottom: 32px; }
+    /* Kingdom Scrolling is a video screen and stays dark in both themes.
+       Re-declaring the neutrals here keeps every descendant dark, and the
+       shared header is pinned dark while the overlay is open. */
+    #overlay-scrolling,
+    html[data-scrolling] .app-header {
+      --ground: #10141A;
+      --raised: #1A2028;
+      --dim: #262E38;
+      --ink: #EDEFF3;
+      --ink-muted: #9AA3AF;
+      --hairline: rgba(237, 239, 243, 0.10);
+      --info-text: #3FA7D6;
+    }
+    html[data-scrolling] .app-header { background: var(--ground); color: var(--ink); }
     #overlay-scrolling {
       background: var(--video-bg);
       overflow: hidden;
@@ -239,8 +321,8 @@
     .status-item .stat { display: flex; align-items: center; gap: 6px; color: var(--ink); }
     .status-item .stat .num { font-size: 18px; font-weight: 600; transition: opacity 120ms var(--ease-in-out); }
     .status-item .stat svg.icon { width: 20px; height: 20px; }
-    .status-item.streak .stat { color: var(--lime); }
-    .status-item.streak .stat .num { color: var(--lime); }
+    .status-item.streak .stat { color: var(--accent-text); }
+    .status-item.streak .stat .num { color: var(--accent-text); }
     .status-item .cap { color: var(--ink-muted); }
     .fade-num { opacity: 0; }
 
@@ -260,7 +342,7 @@
     .path-wrap { position: relative; margin-top: 8px; }
     .path-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
     .path-svg path {
-      stroke: var(--dim);
+      stroke: var(--trail);
       stroke-width: 2;
       fill: none;
       transform-box: fill-box;
@@ -276,26 +358,26 @@
       display: flex; align-items: center; justify-content: center;
       color: var(--ink-muted);
     }
-    .path-node.done { background: var(--lime); color: var(--ground); }
+    .path-node.done { background: var(--primary); color: var(--on-fill); }
     .path-node.locked { background: var(--ground); border: 2px solid var(--dim); }
     .path-node.today {
       width: 88px; height: 88px;
-      background: var(--lime);
-      color: var(--ground);
+      background: var(--today);
+      color: var(--on-fill);
     }
     /* Today's glow lives on pseudo-elements so it can fade in with opacity only. */
     .path-node.today::after {
       content: '';
       position: absolute; inset: 0;
       border-radius: 50%;
-      box-shadow: 0 0 44px 10px rgba(198, 242, 78, 0.30);
+      box-shadow: 0 0 44px 10px var(--glow-strong);
       pointer-events: none;
     }
     .path-node.today::before {
       content: '';
       position: absolute; inset: -8px;
       border-radius: 50%;
-      box-shadow: 0 0 32px 6px rgba(198, 242, 78, 0.25);
+      box-shadow: 0 0 32px 6px var(--glow-halo);
       animation: pulse 2.4s ease-in-out infinite;
       pointer-events: none;
     }
@@ -308,8 +390,8 @@
       position: absolute;
       top: -34px; left: 50%;
       transform: translateX(-50%);
-      background: var(--lime);
-      color: var(--ground);
+      background: var(--today);
+      color: var(--on-fill);
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.08em;
@@ -343,7 +425,7 @@
     .path-node .fill-burst {
       position: absolute; inset: 0;
       border-radius: 50%;
-      background: var(--lime);
+      background: var(--primary);
       animation: fillBurst 420ms var(--spring) both;
       pointer-events: none;
     }
@@ -360,7 +442,7 @@
     /* Milestone hexagon: outer coral shape + inner ground inset */
     .path-node.milestone {
       border: none;
-      background: var(--coral);
+      background: var(--milestone);
       border-radius: 0;
       clip-path: polygon(50% 0%, 94% 25%, 94% 75%, 50% 100%, 6% 75%, 6% 25%);
     }
@@ -369,9 +451,9 @@
       background: var(--ground);
       clip-path: polygon(50% 0%, 94% 25%, 94% 75%, 50% 100%, 6% 75%, 6% 25%);
       display: flex; align-items: center; justify-content: center;
-      color: var(--coral);
+      color: var(--milestone-text);
     }
-    .path-node.milestone.done .hex-inner { background: var(--lime); color: var(--ground); }
+    .path-node.milestone.done .hex-inner { background: var(--primary); color: var(--on-fill); }
     .today-meta {
       position: absolute;
       width: 46%;
@@ -429,7 +511,7 @@
       color: var(--ink);
       font-size: 16px;
     }
-    .invite-row svg.icon { color: var(--coral); }
+    .invite-row svg.icon { color: var(--soft-text); }
 
     /* ============ Devotional Detail ============ */
     .hero {
@@ -440,7 +522,7 @@
     .hero .ph { position: absolute; inset: 0; }
     .hero .scrim {
       position: absolute; inset: 0;
-      background: linear-gradient(to bottom, rgba(13, 18, 32, 0) 35%, rgba(13, 18, 32, 0.55) 65%, var(--ground) 100%);
+      background: linear-gradient(to bottom, transparent 35%, var(--scrim-mid) 65%, var(--ground) 100%);
       pointer-events: none;
     }
     .hero-toolbar {
@@ -463,11 +545,11 @@
     }
     .day-progress { margin-top: 20px; }
     .day-progress .track { height: 3px; border-radius: 2px; background: var(--dim); overflow: hidden; }
-    .day-progress .fill { height: 100%; width: 100%; border-radius: 2px; background: var(--lime); transform-origin: left center; }
+    .day-progress .fill { height: 100%; width: 100%; border-radius: 2px; background: var(--primary); transform-origin: left center; }
     .day-progress .cap { display: block; margin-top: 10px; color: var(--ink-muted); }
     .scripture {
       margin-top: 28px;
-      border-left: 3px solid var(--lime);
+      border-left: 3px solid var(--primary);
       padding-left: 16px;
       display: flex; flex-direction: column; gap: 10px;
     }
@@ -485,8 +567,8 @@
       margin-top: 32px;
       padding: 16px 24px;
       border-radius: 999px;
-      background: var(--lime);
-      color: var(--ground);
+      background: var(--primary);
+      color: var(--on-fill);
       font-size: 16px;
       font-weight: 700;
     }
@@ -498,7 +580,7 @@
       display: flex; flex-direction: column; gap: 6px; align-items: center;
     }
     .discuss-row .who { color: var(--ink-muted); font-size: 14px; }
-    .link-coral { color: var(--coral); font-size: 16px; font-weight: 600; }
+    .link-coral { color: var(--info-text); font-size: 16px; font-weight: 600; }
 
     /* ============ Kingdom Scrolling ============ */
     .reel {
@@ -534,14 +616,14 @@
       padding: 14px 4px 10px;
     }
     .reel-meta .left { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-    .reel-meta .channel { color: var(--lime); }
+    .reel-meta .channel { color: var(--primary); }
     .reel-meta .vtitle { color: var(--ink); }
     .reel-actions { display: flex; gap: 12px; }
     .reel-action { display: flex; flex-direction: column; align-items: center; gap: 4px; }
     .reel-action .bubble {
       width: 46px; height: 46px;
       border-radius: 50%;
-      background: rgba(242, 245, 250, 0.12);
+      background: rgba(237, 239, 243, 0.12);
       display: flex; align-items: center; justify-content: center;
       color: var(--ink);
     }
@@ -555,8 +637,8 @@
     .compose-btn {
       width: 48px; height: 48px;
       border-radius: 50%;
-      background: var(--lime);
-      color: var(--ground);
+      background: var(--primary);
+      color: var(--on-fill);
       display: flex; align-items: center; justify-content: center;
     }
 
@@ -587,7 +669,7 @@
       position: absolute;
       left: 0; bottom: 0;
       width: 1px; height: 2px;
-      background: var(--lime);
+      background: var(--primary);
       transform-origin: left center;
       transform: translateX(0) scaleX(0);
     }
@@ -605,7 +687,7 @@
     .convo-head { display: flex; align-items: center; gap: 8px; }
     .convo-head .avatar { width: 28px; height: 28px; font-size: 10px; }
     .convo-head .name { color: var(--ink-muted); }
-    .convo-head .mod { color: var(--coral); margin-left: 2px; }
+    .convo-head .mod { color: var(--soft-text); margin-left: 2px; }
     .convo-head .pin { margin-left: auto; color: var(--ink-muted); }
     .convo-head .pin svg.icon { width: 16px; height: 16px; }
     .convo-title { margin-top: 10px; color: var(--ink); }
@@ -634,7 +716,7 @@
     .goal-row .fill {
       height: 100%; width: 100%;
       border-radius: 3px;
-      background: var(--lime);
+      background: var(--primary);
       transform-origin: left center;
       transition: transform 400ms var(--ease-out-soft);
     }
@@ -647,7 +729,7 @@
     .pray-head .name { color: var(--ink); font-size: 15px; font-weight: 600; line-height: 1.3; }
     .pray-head .when { color: var(--ink-muted); }
     .pray-body { margin-top: 12px; color: var(--ink); }
-    .answered-cap { display: block; margin-top: 12px; color: var(--lime); }
+    .answered-cap { display: block; margin-top: 12px; color: var(--accent-text); }
     .answered-cap + .pray-body { margin-top: 6px; }
     .pray-btn, .btn-lime {
       display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -656,7 +738,7 @@
       padding: 13px 20px;
       border-radius: 999px;
       border: 1px solid var(--dim);
-      color: var(--lime);
+      color: var(--accent-text);
       font-size: 15px;
       font-weight: 600;
       transition: background 160ms var(--ease-in-out), border-color 160ms var(--ease-in-out), color 160ms var(--ease-in-out),
@@ -668,9 +750,9 @@
     .pray-btn .cnt { font-weight: 600; }
     .pray-btn .lbl, .pray-btn .cnt { transition: opacity 120ms var(--ease-in-out); }
     .pray-btn[aria-pressed="true"], .btn-lime {
-      background: var(--lime);
-      border-color: var(--lime);
-      color: var(--ground);
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--on-fill);
     }
     .pray-btn svg.icon, .btn-lime svg.icon { width: 18px; height: 18px; }
     @keyframes iconPop {
@@ -690,16 +772,16 @@
     .rank { color: var(--ink-muted); font-size: 15px; font-weight: 700; width: 18px; flex: none; }
     .row-lead { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .row-lead .avatar { width: 32px; height: 32px; font-size: 11px; }
-    .settings-row .value.is-lime { color: var(--lime); }
-    .settings-row.is-user { box-shadow: inset 2px 0 0 0 var(--lime); }
+    .settings-row .value.is-lime { color: var(--accent-text); }
+    .settings-row.is-user { box-shadow: inset 2px 0 0 0 var(--primary); }
 
     /* ============ Reflect list ============ */
     .reflect-item { display: block; width: 100%; text-align: left; }
     .reflect-item .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .reflect-item .state { display: flex; align-items: center; gap: 6px; flex: none; }
     .reflect-item .state svg.icon { width: 18px; height: 18px; }
-    .reflect-item .state.done { color: var(--lime); }
-    .reflect-item .state.current { color: var(--lime); }
+    .reflect-item .state.done { color: var(--accent-text); }
+    .reflect-item .state.current { color: var(--today-text); }
     .reflect-item .state.locked { color: var(--ink-muted); }
     .reflect-item .rtitle { margin-top: 10px; color: var(--ink); }
     .reflect-item .rmeta { display: block; margin-top: 6px; color: var(--ink-muted); font-size: 14px; }
@@ -717,7 +799,7 @@
     }
     .account-block .avatar { width: 72px; height: 72px; font-size: 24px; margin-bottom: 10px; }
     .account-block .email { color: var(--ink-muted); }
-    .account-block .plan { color: var(--lime); margin-top: 8px; }
+    .account-block .plan { color: var(--accent-text); margin-top: 8px; }
     .settings-group-cap { display: block; margin: 28px 4px 10px; color: var(--ink-muted); }
     .settings-group {
       background: var(--raised);
@@ -753,15 +835,16 @@
       background: var(--ink);
       transition: transform var(--dur-release) var(--spring), background 160ms var(--ease-in-out);
     }
-    .toggle[aria-checked="true"] { background: var(--lime); }
-    .toggle[aria-checked="true"]::after { transform: translateX(19px); background: var(--ground); }
+    .toggle[aria-checked="true"] { background: var(--primary); }
+    .toggle[aria-checked="true"]::after { transform: translateX(19px); background: var(--on-fill); }
     .signout-wrap { margin-top: 48px; }
     .signout-row {
       width: 100%;
       height: 56px;
       background: var(--raised);
       border-radius: var(--radius-card);
-      color: var(--danger);
+      box-shadow: inset 3px 0 0 0 var(--signout-edge);
+      color: var(--danger-text);
       font-size: 16px;
       font-weight: 600;
       display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -778,7 +861,7 @@
       background: var(--raised);
       border-top: 1px solid var(--hairline);
       border-radius: var(--radius-island);
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+      box-shadow: 0 16px 40px var(--island-shadow);
       display: flex;
       align-items: stretch;
       justify-content: space-around;
@@ -788,15 +871,29 @@
     }
     .nav-island.hidden { display: none; }
     .nav-item {
+      position: relative;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
       color: var(--ink-muted);
       flex: 1;
+      min-width: 0;
       border-radius: 20px;
     }
     .nav-item svg.icon { width: 23px; height: 23px; }
     .nav-item .lbl { font-size: 11px; font-weight: 600; white-space: nowrap; line-height: 1; }
-    /* Active colour change is instant, never animated. */
-    .nav-item[aria-current="page"] { color: var(--lime); }
+    /* Active state is never carried by colour alone: --primary as text measures
+       1.87 on the light ground. Ink + heavier weight + a filled --primary
+       indicator, identical in both themes. Colour change stays instant. */
+    .nav-item[aria-current="page"] { color: var(--ink); }
+    .nav-item[aria-current="page"] .lbl { font-weight: 700; }
+    .nav-item[aria-current="page"]::after {
+      content: '';
+      position: absolute;
+      left: 50%; bottom: 6px;
+      width: 18px; height: 3px;
+      margin-left: -9px;
+      border-radius: 2px;
+      background: var(--primary);
+    }
 
     /* ============ Toast ============ */
     .toast {
@@ -828,6 +925,14 @@
 
     @media (min-width: 480px) {
       .shelf, .filters { margin-right: 0; }
+    }
+
+    /* At <=360px the five nav labels need more room than a 16px inset leaves:
+       "Evangelist" at weight 700 does not fit in a 55px slot. Reclaim the
+       island inset and its inner padding rather than shrinking the type. */
+    @media (max-width: 360px) {
+      .nav-island { left: 6px; right: 6px; padding: 0 2px; }
+      .nav-item { gap: 2px; }
     }
 
     /* ============ Reduced motion ============
@@ -1238,7 +1343,7 @@
         { label: 'Weekly summary', toggle: true, on: false }
       ]},
       { cap: 'App', rows: [
-        { label: 'Appearance', value: 'System', chevron: true },
+        { label: 'Appearance', value: 'System', chevron: true, action: 'theme' },
         { label: 'Language', value: 'English', chevron: true },
         { label: 'Followed topics', value: '3 topics', chevron: true },
         { label: 'Privacy', chevron: true },
@@ -1340,26 +1445,32 @@
     const svg = $('#path-svg');
     $$('.path-node, .today-meta', wrap).forEach((n) => n.remove());
 
-    const W = wrap.clientWidth;
+    // Horizontal geometry is expressed as PERCENTAGES, never measured pixels, so
+    // the zigzag is fluid at any width and never needs a re-layout. (It used to
+    // read wrap.clientWidth and write absolute px, which overflowed the viewport
+    // whenever the width changed before the debounced resize handler caught up,
+    // and collapsed to x=0 when the path rendered while Home was display:none.)
     const spacing = 118;
     const topPad = 70;
+    const AMP = 19;                    // percent either side of centre
     const days = D.plan.pathDays;
     const H = topPad + (days.length - 1) * spacing + 70;
     wrap.style.height = H + 'px';
-    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    // 0..100 user units across, stretched to the element by preserveAspectRatio="none".
+    svg.setAttribute('viewBox', '0 0 100 ' + H);
 
-    const cx = W / 2, amp = Math.min(72, W * 0.19);
     const pts = days.map((day, i) => ({
       day,
-      x: cx + (i % 2 === 0 ? -amp : amp),
-      y: topPad + i * spacing
+      x: 50 + (i % 2 === 0 ? -AMP : AMP),   // percent
+      y: topPad + i * spacing               // px
     }));
 
     // One path per segment so a single connector can be re-drawn on completion.
+    // non-scaling-stroke keeps the 2px line true under the non-uniform viewBox.
     let segs = [];
     for (let i = 1; i < pts.length; i++) {
       const a = pts[i - 1], b = pts[i], my = (a.y + b.y) / 2;
-      segs.push('<path data-seg="' + (i - 1) + '" d="M ' + a.x + ' ' + a.y +
+      segs.push('<path vector-effect="non-scaling-stroke" data-seg="' + (i - 1) + '" d="M ' + a.x + ' ' + a.y +
         ' C ' + a.x + ' ' + my + ', ' + b.x + ' ' + my + ', ' + b.x + ' ' + b.y + '"/>');
     }
     svg.innerHTML = segs.join('');
@@ -1370,7 +1481,7 @@
       const milestone = p.day % D.plan.milestoneEvery === 0;
       const el = document.createElement(isToday || done ? 'button' : 'div');
       el.className = 'path-node' + (isToday ? ' today' : done ? ' done' : ' locked') + (milestone ? ' milestone' : '');
-      el.style.left = p.x + 'px';
+      el.style.left = p.x + '%';
       el.style.top = p.y + 'px';
       el.dataset.day = String(p.day);
       el.dataset.idx = String(idx);
@@ -1392,7 +1503,7 @@
       wrap.appendChild(el);
 
       if (isToday) {
-        const side = p.x > cx ? 'left' : 'right';
+        const side = p.x > 50 ? 'left' : 'right';
         const meta = document.createElement('div');
         meta.className = 'today-meta side-' + side;
         meta.style.top = p.y + 'px';
@@ -1693,11 +1804,26 @@
             return '<div class="settings-row"><span class="label">' + row.label + '</span>' +
               '<button class="toggle" type="button" role="switch" aria-checked="' + row.on + '" aria-label="' + row.label + '" data-g="' + gi + '" data-r="' + ri + '"></button></div>';
           }
-          return '<button class="settings-row" type="button"><span class="label">' + row.label + '</span>' +
+          return '<button class="settings-row" type="button"' + (row.action ? ' data-action="' + row.action + '" data-g="' + gi + '" data-r="' + ri + '"' : '') + '>' +
+            '<span class="label">' + row.label + '</span>' +
             '<span class="value">' + (row.value ? '<span>' + row.value + '</span>' : '') + (row.chevron ? icon('chev-right') : '') + '</span></button>';
         }).join('') +
       '</div>'
     ).join('');
+
+    $$('#settings-groups [data-action="theme"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const order = ['System', 'Light', 'Dark'];
+        const row = D.settings[+btn.dataset.g].rows[+btn.dataset.r];
+        row.value = order[(order.indexOf(row.value) + 1) % order.length];
+        window.__somaTheme = row.value.toLowerCase();
+        const applied = window.__somaResolveTheme();
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', applied === 'light' ? '#F7F8FA' : '#10141A');
+        crossfadeText(btn.querySelector('.value span'), row.value);
+        haptic(10);
+      });
+    });
 
     $$('#settings-groups .toggle').forEach((t) => {
       t.addEventListener('click', () => {
@@ -1942,6 +2068,9 @@
     $('#header-close-btn').hidden = overlay !== 'scrolling';
     const island = $('#nav-island');
     island.classList.toggle('hidden', !!overlay);
+    // Kingdom Scrolling is a video screen: it and the shared header stay dark.
+    if (overlay === 'scrolling') document.documentElement.setAttribute('data-scrolling', '1');
+    else document.documentElement.removeAttribute('data-scrolling');
     const tab = NAV_TAB_OF[next.base];
     $$('.nav-item', island).forEach((item) => {
       if (item.dataset.tab === tab) item.setAttribute('aria-current', 'page');
@@ -2059,7 +2188,7 @@
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (state.base === 'home' && !state.overlay) { renderPath(); }
+      // renderPath is width-independent now, so only the underline needs remeasuring.
       positionUnderline(false);
     }, 120);
   });
