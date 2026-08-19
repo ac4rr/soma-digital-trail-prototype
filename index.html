@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Soma Digital</title>
+  <meta name="description" content="Soma Digital — a daily spiritual discovery journey. Trail design prototype." />
+  <meta name="theme-color" content="#0D1220" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Soma Digital" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ============ Tokens ============ */
+    :root {
+      --ground: #0D1220;
+      --raised: #161D2E;
+      --dim: #2A3350;
+      --ink: #F2F5FA;
+      --ink-muted: #8B95AD;
+      --hairline: rgba(242, 245, 250, 0.10);
+      --lime: #C6F24E;
+      --coral: #FF7A59;
+      --sky: #4CC2FF;
+      --success: #C6F24E;
+      --danger: #FF6B6B;
+      --video-bg: #07090D;
+
+      --radius-card: 20px;
+      --radius-island: 28px;
+      --header-h: 56px;
+      --nav-h: 68px;
+      --page-x: 16px;
+      /* island height + 16px clearance, plus the island's own 16px bottom inset */
+      --nav-clearance: calc(var(--nav-h) + 16px + 16px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* ============ Reset & base ============ */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { background: var(--ground); }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--ground);
+      color: var(--ink);
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 1.6;
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    button {
+      font: inherit;
+      color: inherit;
+      background: none;
+      border: none;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    :focus-visible {
+      outline: 2px solid var(--sky);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+    svg.icon { display: block; width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    svg.icon.filled { fill: currentColor; stroke: none; }
+
+    /* ============ Type scale ============ */
+    .t-display  { font-size: 36px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; }
+    .t-headline { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+    .t-subhead  { font-size: 18px; font-weight: 600; line-height: 1.35; }
+    .t-body     { font-size: 16px; font-weight: 400; line-height: 1.6; }
+    .t-caption  { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.4; }
+    .muted { color: var(--ink-muted); }
+
+    /* ============ Header ============ */
+    .app-header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 40;
+      height: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+      padding-top: env(safe-area-inset-top, 0px);
+      background: var(--ground);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .app-header .wordmark {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink);
+    }
+    .header-right {
+      position: absolute;
+      right: var(--page-x);
+      top: calc(env(safe-area-inset-top, 0px) + (var(--header-h) - 40px) / 2);
+      height: 40px;
+      display: flex;
+      align-items: center;
+    }
+    .avatar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--dim);
+      color: var(--ink);
+      font-weight: 700;
+      flex: none;
+      overflow: hidden;
+      user-select: none;
+    }
+    .avatar.accent-lime  { color: var(--lime); }
+    .avatar.accent-coral { color: var(--coral); }
+    .avatar.accent-sky   { color: var(--sky); }
+    #header-avatar-btn { border-radius: 50%; }
+    #header-avatar-btn .avatar { width: 32px; height: 32px; font-size: 12px; }
+    #header-close-btn {
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink);
+      border-radius: 50%;
+    }
+
+    /* ============ Screens ============ */
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .screen {
+      padding: calc(var(--header-h) + env(safe-area-inset-top, 0px)) var(--page-x) var(--nav-clearance);
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .screen-detail { padding-top: 0; }
+    .screen-kingdom, .screen-settings { padding-bottom: 32px; }
+
+    /* ============ Status strip ============ */
+    .status-strip {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 20px 8px 4px;
+    }
+    .status-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .status-item .stat { display: flex; align-items: center; gap: 6px; color: var(--ink); }
+    .status-item .stat .num { font-size: 18px; font-weight: 600; }
+    .status-item .stat svg.icon { width: 20px; height: 20px; }
+    .status-item.streak .stat { color: var(--lime); }
+    .status-item.streak .stat .num { color: var(--lime); }
+    .status-item .cap { color: var(--ink-muted); }
+
+    /* ============ Home: week banner ============ */
+    .week-banner {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--hairline);
+    }
+    .week-banner .cap { color: var(--ink-muted); }
+
+    /* ============ Home: path ============ */
+    .path-wrap { position: relative; margin-top: 8px; }
+    .path-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .path-svg path { stroke: var(--dim); stroke-width: 2; fill: none; }
+    .path-node {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      width: 68px; height: 68px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink-muted);
+    }
+    .path-node.done { background: var(--lime); color: var(--ground); }
+    .path-node.locked { background: var(--ground); border: 2px solid var(--dim); }
+    .path-node.today {
+      width: 88px; height: 88px;
+      background: var(--lime);
+      color: var(--ground);
+      box-shadow: 0 0 44px 10px rgba(198, 242, 78, 0.30);
+    }
+    .path-node.today::before {
+      content: '';
+      position: absolute; inset: -8px;
+      border-radius: 50%;
+      box-shadow: 0 0 32px 6px rgba(198, 242, 78, 0.25);
+      animation: pulse 2.4s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .path-node.today::before { animation: none; opacity: 0.6; }
+      html { scroll-behavior: auto; }
+      * { transition: none !important; animation-duration: 0.01ms !important; }
+    }
+    .path-node.today svg.icon { width: 34px; height: 34px; }
+    .path-node .start-pill {
+      position: absolute;
+      top: -34px; left: 50%;
+      transform: translateX(-50%);
+      background: var(--lime);
+      color: var(--ground);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 3px 14px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    /* Milestone hexagon: outer coral shape + inner ground inset */
+    .path-node.milestone {
+      border: none;
+      background: var(--coral);
+      border-radius: 0;
+      clip-path: polygon(50% 0%, 94% 25%, 94% 75%, 50% 100%, 6% 75%, 6% 25%);
+    }
+    .path-node.milestone .hex-inner {
+      position: absolute; inset: 2.5px;
+      background: var(--ground);
+      clip-path: polygon(50% 0%, 94% 25%, 94% 75%, 50% 100%, 6% 75%, 6% 25%);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--coral);
+    }
+    .path-node.milestone.done .hex-inner { background: var(--lime); color: var(--ground); }
+    .today-meta {
+      position: absolute;
+      width: 46%;
+      display: flex; flex-direction: column; gap: 4px;
+      transform: translateY(-50%);
+    }
+    .today-meta.side-left  { left: 0; text-align: right; align-items: flex-end; }
+    .today-meta.side-right { right: 0; text-align: left; align-items: flex-start; }
+    .today-meta .cap { color: var(--ink-muted); text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 600; }
+
+    /* ============ Home: shelf ============ */
+    .shelf-cap { margin-top: 8px; color: var(--ink-muted); }
+    .shelf {
+      display: flex;
+      gap: 12px;
+      margin: 12px calc(-1 * var(--page-x)) 0 0; /* bleed to right screen edge */
+      padding: 2px var(--page-x) 8px 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .shelf::-webkit-scrollbar { display: none; }
+    .shelf-card {
+      flex: none;
+      width: 140px;
+      background: var(--raised);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      text-align: left;
+    }
+    .shelf-card .ph { border-radius: 0; }
+    .shelf-card .txt { padding: 10px 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+    .shelf-card .title { font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--ink); }
+    .shelf-card .dur { color: var(--ink-muted); }
+
+    /* Photo placeholder (real photography goes here later) */
+    .ph {
+      background: var(--raised);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink-muted);
+    }
+    .ph.on-raised { background: var(--dim); }
+
+    /* ============ Home: invite row ============ */
+    .invite-row {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--hairline);
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      width: 100%;
+      text-align: left;
+      color: var(--ink);
+      font-size: 16px;
+    }
+    .invite-row svg.icon { color: var(--coral); }
+
+    /* ============ Devotional Detail ============ */
+    .hero {
+      position: relative;
+      height: max(34vh, 280px);
+      margin: 0 calc(-1 * var(--page-x));
+    }
+    .hero .ph { position: absolute; inset: 0; }
+    .hero .scrim {
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, rgba(13, 18, 32, 0) 35%, rgba(13, 18, 32, 0.55) 65%, var(--ground) 100%);
+      pointer-events: none;
+    }
+    .hero-toolbar {
+      position: absolute;
+      top: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 4px);
+      left: 8px; right: 8px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .hero-toolbar .group { display: flex; gap: 4px; }
+    .icon-btn {
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink);
+      border-radius: 50%;
+    }
+    .hero h1 {
+      position: absolute;
+      left: var(--page-x); right: var(--page-x); bottom: 12px;
+      color: var(--ink);
+    }
+    .day-progress { margin-top: 20px; }
+    .day-progress .track { height: 3px; border-radius: 2px; background: var(--dim); overflow: hidden; }
+    .day-progress .fill { height: 100%; border-radius: 2px; background: var(--lime); }
+    .day-progress .cap { display: block; margin-top: 10px; color: var(--ink-muted); }
+    .scripture {
+      margin-top: 28px;
+      border-left: 3px solid var(--lime);
+      padding-left: 16px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .scripture .cap { color: var(--ink-muted); }
+    .devo-section {
+      margin-top: 28px;
+      padding-top: 28px;
+      border-top: 1px solid var(--hairline);
+    }
+    .devo-section .cap { color: var(--ink-muted); display: block; margin-bottom: 12px; }
+    .devo-section p + p { margin-top: 14px; }
+    .btn-primary {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%;
+      margin-top: 32px;
+      padding: 16px 24px;
+      border-radius: 999px;
+      background: var(--lime);
+      color: var(--ground);
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .discuss-row {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--hairline);
+      text-align: center;
+      display: flex; flex-direction: column; gap: 6px; align-items: center;
+    }
+    .discuss-row .who { color: var(--ink-muted); font-size: 14px; }
+    .link-coral { color: var(--coral); font-size: 16px; font-weight: 600; }
+
+    /* ============ Kingdom Scrolling ============ */
+    .screen-kingdom {
+      background: var(--video-bg);
+      padding-left: 0; padding-right: 0; padding-bottom: 0;
+      max-width: none;
+      height: 100dvh;
+      overflow: hidden;
+    }
+    .reel {
+      height: 100%;
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+      scrollbar-width: none;
+    }
+    .reel::-webkit-scrollbar { display: none; }
+    .reel-slide {
+      scroll-snap-align: start;
+      height: 92%;
+      display: flex; flex-direction: column;
+      padding: 12px 16px 0;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .reel-slide:last-child { height: 100%; }
+    .video-card {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      align-self: center;
+      aspect-ratio: 9 / 16;
+      max-width: 100%;
+    }
+    .video-card .ph { position: absolute; inset: 0; }
+    .video-card .ph svg.icon { width: 44px; height: 44px; }
+    .reel-meta {
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+      padding: 14px 4px 10px;
+    }
+    .reel-meta .left { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .reel-meta .channel { color: var(--lime); }
+    .reel-meta .vtitle { color: var(--ink); }
+    .reel-actions { display: flex; gap: 12px; }
+    .reel-action { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .reel-action .bubble {
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      background: rgba(242, 245, 250, 0.12);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink);
+    }
+    .reel-action .count { color: var(--ink-muted); font-size: 12px; font-weight: 600; }
+
+    /* ============ Screen title row (Connect / Pray) ============ */
+    .title-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 20px;
+    }
+    .compose-btn {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: var(--lime);
+      color: var(--ground);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ============ Connect ============ */
+    .filters {
+      display: flex;
+      gap: 24px;
+      margin: 16px calc(-1 * var(--page-x)) 0 0; /* bleed right */
+      padding-right: var(--page-x);
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: none;
+    }
+    .filters::-webkit-scrollbar { display: none; }
+    .filter {
+      color: var(--ink-muted);
+      font-size: 16px;
+      font-weight: 600;
+      padding: 6px 0 10px;
+      border-bottom: 2px solid transparent;
+      flex: none;
+    }
+    .filter[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--lime); }
+
+    .card-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+    .card {
+      background: var(--raised);
+      border-radius: var(--radius-card);
+      padding: 16px;
+    }
+    .convo-head { display: flex; align-items: center; gap: 8px; }
+    .convo-head .avatar { width: 28px; height: 28px; font-size: 10px; }
+    .convo-head .name { color: var(--ink-muted); }
+    .convo-head .mod { color: var(--coral); margin-left: 2px; }
+    .convo-head .pin { margin-left: auto; color: var(--ink-muted); }
+    .convo-head .pin svg.icon { width: 16px; height: 16px; }
+    .convo-title { margin-top: 10px; color: var(--ink); }
+    .convo-preview { margin-top: 6px; color: var(--ink-muted); font-size: 14px; line-height: 1.5; }
+    .convo-foot {
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 14px;
+      color: var(--ink-muted);
+      font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+    }
+    .convo-foot .replies { display: flex; align-items: center; gap: 5px; }
+    .convo-foot .replies svg.icon { width: 16px; height: 16px; }
+    .facepile { display: flex; }
+    .facepile .avatar {
+      width: 20px; height: 20px; font-size: 8px;
+      border: 2px solid var(--raised);
+    }
+    .facepile .avatar + .avatar { margin-left: -7px; }
+    .convo-foot .when { margin-left: auto; }
+
+    /* ============ Pray ============ */
+    .goal-row { margin-top: 20px; }
+    .goal-row .cap { color: var(--ink-muted); }
+    .goal-row .bar-line { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+    .goal-row .track { flex: 1; height: 6px; border-radius: 3px; background: var(--dim); overflow: hidden; }
+    .goal-row .fill { height: 100%; border-radius: 3px; background: var(--lime); transition: width 0.3s ease; }
+    .goal-row .count { color: var(--ink); font-size: 16px; font-weight: 600; white-space: nowrap; }
+
+    .pray-head { display: flex; align-items: center; gap: 10px; }
+    .pray-head .avatar { width: 32px; height: 32px; font-size: 11px; }
+    .pray-head .who { display: flex; flex-direction: column; }
+    .pray-head .name { color: var(--ink); font-size: 15px; font-weight: 600; line-height: 1.3; }
+    .pray-head .when { color: var(--ink-muted); }
+    .pray-body { margin-top: 12px; color: var(--ink); }
+    .answered-cap { display: block; margin-top: 12px; color: var(--lime); }
+    .answered-cap + .pray-body { margin-top: 6px; }
+    .pray-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%;
+      margin-top: 16px;
+      padding: 13px 20px;
+      border-radius: 999px;
+      border: 1px solid var(--dim);
+      color: var(--lime);
+      font-size: 15px;
+      font-weight: 600;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .pray-btn .cnt { font-weight: 600; }
+    .pray-btn[aria-pressed="true"] {
+      background: var(--lime);
+      border-color: var(--lime);
+      color: var(--ground);
+    }
+    .pray-btn svg.icon { width: 18px; height: 18px; }
+
+    /* ============ Settings ============ */
+    .settings-top { display: flex; align-items: center; gap: 4px; margin-top: 16px; }
+    .settings-top .icon-btn { margin-left: -12px; }
+    .account-block {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 24px 0 28px;
+      border-bottom: 1px solid var(--hairline);
+      text-align: center;
+    }
+    .account-block .avatar { width: 72px; height: 72px; font-size: 24px; margin-bottom: 10px; }
+    .account-block .email { color: var(--ink-muted); }
+    .account-block .plan { color: var(--lime); margin-top: 8px; }
+    .settings-group-cap { display: block; margin: 28px 4px 10px; color: var(--ink-muted); }
+    .settings-group {
+      background: var(--raised);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+    }
+    .settings-row {
+      width: 100%;
+      height: 56px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 0 16px;
+      text-align: left;
+    }
+    .settings-row + .settings-row { border-top: 1px solid var(--hairline); }
+    .settings-row .label { color: var(--ink); font-size: 16px; }
+    .settings-row .value { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); font-size: 15px; }
+    .settings-row .value svg.icon { width: 18px; height: 18px; }
+    .toggle {
+      width: 46px; height: 27px;
+      border-radius: 999px;
+      background: var(--dim);
+      position: relative;
+      flex: none;
+      transition: background 0.15s ease;
+    }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 21px; height: 21px;
+      border-radius: 50%;
+      background: var(--ink);
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+    .toggle[aria-checked="true"] { background: var(--lime); }
+    .toggle[aria-checked="true"]::after { transform: translateX(19px); background: var(--ground); }
+    .signout-wrap { margin-top: 48px; }
+    .signout-row {
+      width: 100%;
+      height: 56px;
+      background: var(--raised);
+      border-radius: var(--radius-card);
+      color: var(--danger);
+      font-size: 16px;
+      font-weight: 600;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .signout-row svg.icon { width: 20px; height: 20px; }
+
+    /* ============ Nav island ============ */
+    .nav-island {
+      position: fixed;
+      left: 16px; right: 16px;
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      z-index: 40;
+      height: var(--nav-h);
+      background: var(--raised);
+      border-top: 1px solid var(--hairline);
+      border-radius: var(--radius-island);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: stretch;
+      justify-content: space-around;
+      padding: 0 6px;
+      max-width: 448px;
+      margin: 0 auto;
+    }
+    .nav-island.hidden { display: none; }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      color: var(--ink-muted);
+      flex: 1;
+      border-radius: 20px;
+    }
+    .nav-item svg.icon { width: 23px; height: 23px; }
+    .nav-item .lbl { font-size: 11px; font-weight: 600; white-space: nowrap; line-height: 1; }
+    .nav-item[aria-current="page"] { color: var(--lime); }
+
+    @media (min-width: 480px) {
+      .shelf, .filters { margin-right: 0; }
+    }
+  </style>
+</head>
+<body>
+  <!-- ============ Icon sprite ============ -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.5l8.5 7"/><path d="M5.5 9.5V20h4.8v-5.4h3.4V20h4.8V9.5"/></symbol>
+      <symbol id="i-megaphone" viewBox="0 0 24 24"><path d="M4 10.5 18 5v13L4 13.5v-3z"/><path d="M4 10.5v3"/><path d="M8 14.5V18a1.4 1.4 0 0 0 1.4 1.4h.8A1.3 1.3 0 0 0 11.5 18v-2.4"/><path d="M20.5 9.7a3 3 0 0 1 0 4"/></symbol>
+      <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.3C10.5 5 8.6 4.3 6 4.3h-1.5V19H6c2.6 0 4.5.7 6 2 1.5-1.3 3.4-2 6-2h1.5V4.3H18c-2.6 0-4.5.7-6 2z"/><path d="M12 6.3V21"/></symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.4C7.4 16.7 3.5 13.4 3.5 9.7 3.5 7 5.6 5 8 5c1.6 0 3.1.8 4 2.2C12.9 5.8 14.4 5 16 5c2.4 0 4.5 2 4.5 4.7 0 3.7-3.9 7-8.5 10.7z"/></symbol>
+      <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8"/><path d="M17.5 14.9c1.8.7 3 2.2 3 4.6"/></symbol>
+      <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3.5c.6 2.6-.4 4.2-1.8 5.7C8.7 10.8 7 12.4 7 15a5 5 0 0 0 10 0c0-1.5-.5-2.8-1.3-3.9-.5 1-1.1 1.6-2 2.1.5-3.3-.2-7-1.7-9.7z"/></symbol>
+      <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5.5 12.5 4.2 4.2 8.8-9.4"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M8.5 5.8v12.4a.6.6 0 0 0 .92.5l9.6-6.2a.6.6 0 0 0 0-1l-9.6-6.2a.6.6 0 0 0-.92.5z"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5.5" y="10.5" width="13" height="9" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></symbol>
+      <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4"/><path d="M6 5h11.5l-2.8 4 2.8 4H6"/></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M14.5 3.5 20.5 9.5l-3.5 1 -3 3 -.5 4.5-7.5-7.5L10.5 10l3-3z"/><path d="m8.5 15.5-4.5 4.5"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+      <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4.5 19.5 5.4 16 16.2 5.2a1.8 1.8 0 0 1 2.6 0 1.8 1.8 0 0 1 0 2.6L8 18.6l-3.5.9z"/><path d="m14.8 6.6 2.6 2.6"/></symbol>
+      <symbol id="i-chev-left" viewBox="0 0 24 24"><path d="M14.5 5.5 8 12l6.5 6.5"/></symbol>
+      <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="m9.5 5.5 6.5 6.5-6.5 6.5"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4.5 12h15M13.5 6l6 6-6 6"/></symbol>
+      <symbol id="i-share-up" viewBox="0 0 24 24"><path d="M12 14.5V3.5"/><path d="M8 7l4-3.5L16 7"/><path d="M6 11.5H5.5A1.5 1.5 0 0 0 4 13v6a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-6a1.5 1.5 0 0 0-1.5-1.5H18"/></symbol>
+      <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M7 4.5h10a1 1 0 0 1 1 1v14l-6-3.8-6 3.8v-14a1 1 0 0 1 1-1z"/></symbol>
+      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 11.6a7.6 7.6 0 0 1-8 7.2 8.5 8.5 0 0 1-3.3-.6L4 19.5l1.3-4a7 7 0 0 1-1.3-4A7.6 7.6 0 0 1 12 4.4a7.6 7.6 0 0 1 8 7.2z"/></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="M20.5 3.5 3.5 10l6.5 2.5L12.5 19l8-15.5z"/><path d="M10 12.5 20.5 3.5"/></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m5.5 17.5 4.5-4 3 2.5 3.5-3.5 2.5 2.5"/></symbol>
+      <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14.5 8V5.5a1.5 1.5 0 0 0-1.5-1.5H6.5A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20H13a1.5 1.5 0 0 0 1.5-1.5V16"/><path d="M9.5 12h11M17 8.5l3.5 3.5-3.5 3.5"/></symbol>
+    </defs>
+  </svg>
+
+  <!-- ============ Header ============ -->
+  <header class="app-header">
+    <span class="wordmark">Soma Digital</span>
+    <div class="header-right">
+      <button id="header-avatar-btn" type="button" aria-label="Open Settings">
+        <span class="avatar" aria-hidden="true">AY</span>
+      </button>
+      <button id="header-close-btn" type="button" aria-label="Close Kingdom Scrolling" hidden>
+        <svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ============ SCREEN: HOME ============ -->
+    <section id="screen-home" class="screen screen-home active" role="region" aria-label="Home">
+      <div class="status-strip" data-status-strip></div>
+
+      <div class="week-banner">
+        <span class="t-caption cap">Week 3</span>
+        <h2 class="t-subhead">Peace</h2>
+      </div>
+
+      <div class="path-wrap" id="path-wrap">
+        <svg class="path-svg" id="path-svg" aria-hidden="true" preserveAspectRatio="none"></svg>
+        <!-- nodes injected by JS -->
+      </div>
+
+      <span class="t-caption shelf-cap">Pick up where you left off</span>
+      <div class="shelf" id="shelf" role="list" aria-label="Pick up where you left off"></div>
+
+      <button class="invite-row" type="button">
+        <span>2 more invites and your next month is free</span>
+        <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"/></svg>
+      </button>
+    </section>
+
+    <!-- ============ SCREEN: DEVOTIONAL DETAIL ============ -->
+    <section id="screen-detail" class="screen screen-detail" role="region" aria-label="Devotional detail">
+      <div class="hero">
+        <div class="ph" aria-label="Devotional artwork placeholder" role="img">
+          <svg class="icon" style="width:40px;height:40px" aria-hidden="true"><use href="#i-image"/></svg>
+        </div>
+        <div class="scrim"></div>
+        <div class="hero-toolbar">
+          <button class="icon-btn" type="button" data-nav-to="home" aria-label="Back to Home">
+            <svg class="icon" aria-hidden="true"><use href="#i-chev-left"/></svg>
+          </button>
+          <div class="group">
+            <button class="icon-btn" type="button" aria-label="Share this devotional">
+              <svg class="icon" aria-hidden="true"><use href="#i-share-up"/></svg>
+            </button>
+            <button class="icon-btn" type="button" aria-label="Bookmark this devotional">
+              <svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg>
+            </button>
+          </div>
+        </div>
+        <h1 class="t-display">The peace that guards your heart</h1>
+      </div>
+
+      <div class="day-progress">
+        <div class="track" role="progressbar" aria-valuenow="15" aria-valuemin="1" aria-valuemax="21" aria-label="Plan progress: day 15 of 21">
+          <div class="fill" style="width: 71.4%"></div>
+        </div>
+        <span class="t-caption cap">Day 15 of 21</span>
+      </div>
+
+      <blockquote class="scripture">
+        <p class="t-subhead">&ldquo;Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God.&rdquo;</p>
+        <cite class="t-caption cap" style="font-style:normal">Philippians 4:6-7</cite>
+      </blockquote>
+
+      <div class="devo-section">
+        <span class="t-caption cap">Reflection</span>
+        <p class="t-body">Anxiety often feels like an uninvited guest that refuses to leave. It demands our attention, pulling our focus away from the present moment and into a future we cannot control. This passage doesn't offer a platitude; it offers a practical exchange.</p>
+        <p class="t-body">When we bring our requests to God with gratitude, we are actively shifting our perspective. We acknowledge the reality of our concerns while simultaneously anchoring ourselves in what is already good.</p>
+      </div>
+
+      <div class="devo-section">
+        <span class="t-caption cap">Application</span>
+        <p class="t-body">Identify one specific worry that has been occupying your mind today. Instead of ruminating on the potential outcomes, vocalize it.</p>
+        <p class="t-body">Write it down, and next to it, list three things you are currently grateful for. Notice if this simple act of re-framing creates even a small amount of breathing room in your chest.</p>
+      </div>
+
+      <div class="devo-section">
+        <span class="t-caption cap">Prayer</span>
+        <p class="t-body">&ldquo;God, I release my tight grip on tomorrow. Help me to trade my anxiety for your peace, trusting that you are present in the details of my life. Amen.&rdquo;</p>
+      </div>
+
+      <button class="btn-primary" type="button">Mark day 15 complete</button>
+
+      <div class="discuss-row">
+        <span class="who">9 people are discussing this today</span>
+        <button class="link-coral" type="button" data-nav-to="connect">Talk about this</button>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN: KINGDOM SCROLLING ============ -->
+    <section id="screen-kingdom" class="screen screen-kingdom" role="region" aria-label="Kingdom Scrolling">
+      <div class="reel" id="reel" aria-label="Kingdom Scrolling video feed"></div>
+    </section>
+
+    <!-- ============ SCREEN: CONNECT ============ -->
+    <section id="screen-connect" class="screen screen-connect" role="region" aria-label="Connect">
+      <div class="status-strip" data-status-strip></div>
+
+      <div class="title-row">
+        <h1 class="t-headline">Connect</h1>
+        <button class="compose-btn" type="button" aria-label="Start a conversation">
+          <svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>
+        </button>
+      </div>
+
+      <div class="filters" role="tablist" aria-label="Conversation topics" id="filters"></div>
+
+      <div class="card-list" id="convo-list"></div>
+    </section>
+
+    <!-- ============ SCREEN: PRAY ============ -->
+    <section id="screen-pray" class="screen screen-pray" role="region" aria-label="Pray">
+      <div class="status-strip" data-status-strip></div>
+
+      <div class="title-row">
+        <h1 class="t-headline">Pray</h1>
+        <button class="compose-btn" type="button" aria-label="Share a prayer request">
+          <svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg>
+        </button>
+      </div>
+
+      <div class="goal-row">
+        <span class="t-caption cap">Today's goal</span>
+        <div class="bar-line">
+          <div class="track" role="progressbar" id="goal-track" aria-valuemin="0" aria-valuemax="5" aria-valuenow="3" aria-label="Today's prayer goal">
+            <div class="fill" id="goal-fill" style="width: 60%"></div>
+          </div>
+          <span class="count" id="goal-count">3 of 5</span>
+        </div>
+      </div>
+
+      <div class="card-list" id="pray-list"></div>
+    </section>
+
+    <!-- ============ SCREEN: SETTINGS ============ -->
+    <section id="screen-settings" class="screen screen-settings" role="region" aria-label="Settings">
+      <div class="settings-top">
+        <button class="icon-btn" type="button" data-nav-back aria-label="Back">
+          <svg class="icon" aria-hidden="true"><use href="#i-chev-left"/></svg>
+        </button>
+        <h1 class="t-display">Settings</h1>
+      </div>
+
+      <div class="account-block">
+        <span class="avatar" aria-hidden="true">AY</span>
+        <span class="t-headline">Acar Yildiz</span>
+        <span class="email">acar@somadigital.app</span>
+        <span class="t-caption plan">Free</span>
+      </div>
+
+      <div id="settings-groups"></div>
+
+      <div class="signout-wrap">
+        <button class="signout-row" type="button">
+          <svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg>
+          Sign out
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ Nav island ============ -->
+  <nav class="nav-island" id="nav-island" aria-label="Primary">
+    <button class="nav-item" type="button" data-tab="home" aria-current="page">
+      <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span class="lbl">Home</span>
+    </button>
+    <button class="nav-item" type="button" data-tab="kingdom">
+      <svg class="icon" aria-hidden="true"><use href="#i-megaphone"/></svg><span class="lbl">Evangelist</span>
+    </button>
+    <button class="nav-item" type="button" data-tab="detail">
+      <svg class="icon" aria-hidden="true"><use href="#i-book"/></svg><span class="lbl">Reflect</span>
+    </button>
+    <button class="nav-item" type="button" data-tab="pray">
+      <svg class="icon" aria-hidden="true"><use href="#i-heart"/></svg><span class="lbl">Pray</span>
+    </button>
+    <button class="nav-item" type="button" data-tab="connect">
+      <svg class="icon" aria-hidden="true"><use href="#i-people"/></svg><span class="lbl">Connect</span>
+    </button>
+  </nav>
+
+  <script>
+  'use strict';
+
+  /* ==========================================================================
+     SAMPLE DATA — everything below is invented prototype content.
+     OPEN PRODUCT QUESTION: this prototype assumes a sequenced 21-day plan
+     ("Peace", day 15 = today). The production app has an independent
+     devotional library with tabs and search — no sequence exists there yet.
+     ========================================================================== */
+  const SOMA_SAMPLE_DATA = {
+    user: { name: 'Acar Yildiz', initials: 'AY', email: 'acar@somadigital.app', plan: 'Free' },
+    stats: { streak: 12, prayers: '2,347', invites: 4 },
+    plan: {
+      name: 'Peace',
+      week: 'Week 3',
+      totalDays: 21,
+      todayDay: 15,           // days 1–14 completed, 16+ locked
+      pathDays: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+      milestoneEvery: 7,      // days 7, 14, 21 are milestones
+      today: { title: 'The peace that guards your heart', meta: 'Philippians 4:6-7 · 8 min' }
+    },
+    shelf: [
+      { title: 'Stillness in the Storm', dur: '12 min' },
+      { title: 'The Architecture of Faith', dur: '15 min' },
+      { title: 'Deep Waters', dur: '20 min' }
+    ],
+    videos: [
+      { channel: 'Life.Church', title: 'Instead of a Sign, God Might Do This', likes: '12K', comments: '428', shares: '1.2K' },
+      { channel: 'Desiring God', title: 'Finding Joy In Every Moment', likes: '8.4K', comments: '210', shares: '960' }
+    ],
+    filters: ['Daily life', 'Scripture', 'Doubt', 'Prayer'],
+    selectedFilter: 1,
+    conversations: [
+      { name: 'Elias Thorne', initials: 'ET', accent: 'sky', pinned: true,
+        title: 'Reading Romans 8: Finding solid ground',
+        preview: 'Connecting grace with feeling inadequate.',
+        replies: 24, faces: ['MJ', 'RK', 'AL'], when: '2h ago' },
+      { name: 'Sarah Jenkins', initials: 'SJ', accent: 'coral', moderator: true,
+        title: 'Weekly Reflection Prompt: Stillness',
+        preview: 'Where do you build stillness into routine?',
+        replies: 89, faces: ['TP', 'GN', 'FA'], when: '5h ago' },
+      { name: 'Marcus V.', initials: 'MV', accent: 'lime',
+        title: 'Context behind the Psalms',
+        preview: 'Good resources on David’s exile years?',
+        replies: 12, faces: ['LB', 'HS', 'CW'], when: '8h ago' },
+      { name: 'Elena R.', initials: 'ER', accent: 'sky',
+        title: 'Wrestling with translation nuances',
+        preview: 'Comparing ESV to the Greek in John 1.',
+        replies: 34, faces: ['DP', 'KM', 'JT'], when: 'Yesterday' },
+      { name: 'David Chen', initials: 'DC', accent: 'coral',
+        title: 'Finding peace in paradox',
+        preview: 'The beatitudes vs a culture of self-promotion.',
+        replies: 45, faces: ['SB', 'YO', 'NW'], when: 'Yesterday' }
+    ],
+    requests: [
+      { id: 'r1', name: 'Marcus T.', initials: 'MT', accent: 'sky', when: '2 hours ago', praying: true, count: 12,
+        body: 'Praying for clarity and peace as I navigate a major career transition this week. Seeking direction on which path aligns best with my family’s needs.' },
+      { id: 'r2', name: 'Sarah J.', initials: 'SJ', accent: 'coral', when: '5 hours ago', praying: false, count: 8,
+        body: 'My mother is undergoing surgery tomorrow morning. Please join me in praying for the medical team and for a smooth, rapid recovery.' },
+      { id: 'r3', name: 'Daniel O.', initials: 'DO', accent: 'lime', when: '8 hours ago', praying: false, count: 21,
+        body: 'Starting a small group in my neighbourhood next month. Praying for open doors and for the courage to keep inviting people.' },
+      { id: 'r4', name: 'Sarah J.', initials: 'SJ', accent: 'coral', when: 'Just now', answered: true,
+        body: 'The surgery went perfectly. She is home.' }
+    ],
+    goal: { done: 3, target: 5 },
+    settings: [
+      { cap: 'Account', rows: [
+        { label: 'Name', value: 'Acar Yildiz', chevron: true },
+        { label: 'Email', value: 'acar@somadigital.app', chevron: true },
+        { label: 'Plan', value: 'Free', chevron: true },
+        { label: 'Profile photo', chevron: true }
+      ]},
+      { cap: 'Notifications', rows: [
+        { label: 'Daily devotional reminder', toggle: true, on: true },
+        { label: 'Prayer replies', toggle: true, on: true },
+        { label: 'Weekly summary', toggle: true, on: false }
+      ]},
+      { cap: 'App', rows: [
+        { label: 'Appearance', value: 'System', chevron: true },
+        { label: 'Language', value: 'English', chevron: true },
+        { label: 'Followed topics', value: '3 topics', chevron: true },
+        { label: 'Privacy', chevron: true },
+        { label: 'About Soma Digital', chevron: true }
+      ]}
+    ]
+  };
+
+  const D = SOMA_SAMPLE_DATA;
+  const $ = (sel, root) => (root || document).querySelector(sel);
+  const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+
+  function icon(name, cls) {
+    return '<svg class="icon' + (cls ? ' ' + cls : '') + '" aria-hidden="true"><use href="#i-' + name + '"/></svg>';
+  }
+  function avatarHTML(initials, accent, size, fs) {
+    return '<span class="avatar accent-' + (accent || 'lime') + '" aria-hidden="true" style="width:' + size + 'px;height:' + size + 'px;font-size:' + fs + 'px">' + initials + '</span>';
+  }
+
+  /* ============ Status strip (identical on Home, Reflect, Pray, Connect) ============ */
+  function renderStatusStrips() {
+    const html =
+      '<div class="status-item streak"><span class="stat">' + icon('flame') + '<span class="num">' + D.stats.streak + '</span></span><span class="t-caption cap">Day streak</span></div>' +
+      '<div class="status-item"><span class="stat">' + icon('circle') + '<span class="num">' + D.stats.prayers + '</span></span><span class="t-caption cap">Prayers</span></div>' +
+      '<div class="status-item"><span class="stat">' + icon('circle') + '<span class="num">' + D.stats.invites + '</span></span><span class="t-caption cap">Invites</span></div>';
+    $$('[data-status-strip]').forEach((el) => { el.innerHTML = html; });
+  }
+
+  /* ============ Home path ============ */
+  function renderPath() {
+    const wrap = $('#path-wrap');
+    const svg = $('#path-svg');
+    $$('.path-node, .today-meta', wrap).forEach((n) => n.remove());
+
+    const W = wrap.clientWidth;
+    const spacing = 118;
+    const topPad = 70;
+    const days = D.plan.pathDays;
+    const H = topPad + (days.length - 1) * spacing + 70;
+    wrap.style.height = H + 'px';
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+    const cx = W / 2, amp = Math.min(72, W * 0.19);
+    const pts = days.map((day, i) => ({
+      day,
+      x: cx + (i % 2 === 0 ? -amp : amp),
+      y: topPad + i * spacing
+    }));
+
+    let d = 'M ' + pts[0].x + ' ' + pts[0].y;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i], my = (a.y + b.y) / 2;
+      d += ' C ' + a.x + ' ' + my + ', ' + b.x + ' ' + my + ', ' + b.x + ' ' + b.y;
+    }
+    svg.innerHTML = '<path d="' + d + '"/>';
+
+    pts.forEach((p) => {
+      const isToday = p.day === D.plan.todayDay;
+      const done = p.day < D.plan.todayDay;
+      const milestone = p.day % D.plan.milestoneEvery === 0;
+      const el = document.createElement(isToday ? 'button' : (done ? 'button' : 'div'));
+      el.className = 'path-node' + (isToday ? ' today' : done ? ' done' : ' locked') + (milestone ? ' milestone' : '');
+      el.style.left = p.x + 'px';
+      el.style.top = p.y + 'px';
+      if (isToday) {
+        el.type = 'button';
+        el.setAttribute('aria-label', 'Day ' + p.day + ', today: ' + D.plan.today.title + '. Start devotional.');
+        el.innerHTML = '<span class="start-pill" aria-hidden="true">Start</span>' + icon('play');
+        el.addEventListener('click', () => showScreen('detail'));
+      } else if (done) {
+        el.type = 'button';
+        el.setAttribute('aria-label', 'Day ' + p.day + ', completed');
+        el.innerHTML = milestone ? '<span class="hex-inner">' + icon('check') + '</span>' : icon('check');
+        el.addEventListener('click', () => showScreen('detail'));
+      } else {
+        el.setAttribute('role', 'img');
+        el.setAttribute('aria-label', 'Day ' + p.day + ', locked' + (milestone ? ', milestone' : ''));
+        el.innerHTML = milestone ? '<span class="hex-inner">' + icon('flag') + '</span>' : icon('lock');
+      }
+      wrap.appendChild(el);
+
+      if (isToday) {
+        const side = p.x > cx ? 'left' : 'right';
+        const meta = document.createElement('div');
+        meta.className = 'today-meta side-' + side;
+        meta.style.top = p.y + 'px';
+        meta.innerHTML = '<span class="t-subhead">' + D.plan.today.title + '</span><span class="cap">' + D.plan.today.meta + '</span>';
+        wrap.appendChild(meta);
+      }
+    });
+  }
+
+  /* ============ Home shelf ============ */
+  function renderShelf() {
+    $('#shelf').innerHTML = D.shelf.map((c) =>
+      '<button class="shelf-card" type="button" role="listitem" aria-label="' + c.title + ', ' + c.dur + '">' +
+        '<div class="ph on-raised" style="height:78px">' + icon('image') + '</div>' +
+        '<span class="txt"><span class="title">' + c.title + '</span><span class="t-caption dur">' + c.dur + '</span></span>' +
+      '</button>'
+    ).join('');
+  }
+
+  /* ============ Kingdom Scrolling ============ */
+  function renderReel() {
+    $('#reel').innerHTML = D.videos.map((v, i) =>
+      '<div class="reel-slide" role="group" aria-label="Video ' + (i + 1) + ' of ' + D.videos.length + ': ' + v.title + '">' +
+        '<div class="video-card"><div class="ph" style="background:var(--raised)" role="img" aria-label="Video placeholder">' + icon('play') + '</div></div>' +
+        '<div class="reel-meta">' +
+          '<div class="left"><span class="t-caption channel">' + v.channel + '</span><span class="t-subhead vtitle">' + v.title + '</span></div>' +
+          '<div class="reel-actions">' +
+            '<button class="reel-action" type="button" aria-label="Like, ' + v.likes + '"><span class="bubble">' + icon('heart') + '</span><span class="count">' + v.likes + '</span></button>' +
+            '<button class="reel-action" type="button" aria-label="Comments, ' + v.comments + '"><span class="bubble">' + icon('chat') + '</span><span class="count">' + v.comments + '</span></button>' +
+            '<button class="reel-action" type="button" aria-label="Share, ' + v.shares + '"><span class="bubble">' + icon('send') + '</span><span class="count">' + v.shares + '</span></button>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    ).join('');
+  }
+
+  /* ============ Connect ============ */
+  function renderFilters() {
+    $('#filters').innerHTML = D.filters.map((f, i) =>
+      '<button class="filter" type="button" role="tab" aria-selected="' + (i === D.selectedFilter) + '">' + f + '</button>'
+    ).join('');
+    $$('#filters .filter').forEach((btn, i) => {
+      btn.addEventListener('click', () => {
+        D.selectedFilter = i;
+        renderFilters();
+      });
+    });
+  }
+
+  function renderConversations() {
+    $('#convo-list').innerHTML = D.conversations.map((c) =>
+      '<article class="card">' +
+        '<div class="convo-head">' +
+          avatarHTML(c.initials, c.accent, 28, 10) +
+          '<span class="t-caption name">' + c.name + '</span>' +
+          (c.moderator ? '<span class="t-caption mod">Moderator</span>' : '') +
+          (c.pinned ? '<span class="pin" role="img" aria-label="Pinned">' + icon('pin') + '</span>' : '') +
+        '</div>' +
+        '<h3 class="t-subhead convo-title">' + c.title + '</h3>' +
+        '<p class="convo-preview">' + c.preview + '</p>' +
+        '<div class="convo-foot">' +
+          '<span class="replies">' + icon('chat') + c.replies + '</span>' +
+          '<span class="facepile" aria-hidden="true">' + c.faces.map((f, j) => avatarHTML(f, ['lime', 'sky', 'coral'][j % 3], 20, 8)).join('') + '</span>' +
+          '<span class="when">' + c.when + '</span>' +
+        '</div>' +
+      '</article>'
+    ).join('');
+  }
+
+  /* ============ Pray ============ */
+  function renderGoal() {
+    const pct = Math.min(100, (D.goal.done / D.goal.target) * 100);
+    $('#goal-fill').style.width = pct + '%';
+    $('#goal-count').textContent = D.goal.done + ' of ' + D.goal.target;
+    $('#goal-track').setAttribute('aria-valuenow', String(D.goal.done));
+  }
+
+  function renderPray() {
+    $('#pray-list').innerHTML = D.requests.map((r) =>
+      '<article class="card">' +
+        '<div class="pray-head">' +
+          avatarHTML(r.initials, r.accent, 32, 11) +
+          '<span class="who"><span class="name">' + r.name + '</span><span class="t-caption when" style="text-transform:none;letter-spacing:0.02em">' + r.when + '</span></span>' +
+        '</div>' +
+        (r.answered
+          ? '<span class="t-caption answered-cap">Answered</span><p class="pray-body">' + r.body + '</p>'
+          : '<p class="pray-body">' + r.body + '</p>' +
+            '<button class="pray-btn" type="button" data-req="' + r.id + '" aria-pressed="' + r.praying + '">' +
+              icon('heart') +
+              '<span class="lbl">' + (r.praying ? 'Praying' : 'I’m praying') + '</span>' +
+              '<span class="cnt">· ' + r.count + ' praying</span>' +
+            '</button>'
+        ) +
+      '</article>'
+    ).join('');
+
+    $$('#pray-list .pray-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const r = D.requests.find((x) => x.id === btn.dataset.req);
+        r.praying = !r.praying;
+        r.count += r.praying ? 1 : -1;
+        if (r.praying && D.goal.done < D.goal.target) D.goal.done += 1;
+        else if (!r.praying && D.goal.done > 0) D.goal.done -= 1;
+        renderPray();
+        renderGoal();
+      });
+    });
+  }
+
+  /* ============ Settings ============ */
+  function renderSettings() {
+    $('#settings-groups').innerHTML = D.settings.map((group, gi) =>
+      '<span class="t-caption settings-group-cap">' + group.cap + '</span>' +
+      '<div class="settings-group">' +
+        group.rows.map((row, ri) => {
+          if (row.toggle) {
+            return '<div class="settings-row"><span class="label">' + row.label + '</span>' +
+              '<button class="toggle" type="button" role="switch" aria-checked="' + row.on + '" aria-label="' + row.label + '" data-g="' + gi + '" data-r="' + ri + '"></button></div>';
+          }
+          return '<button class="settings-row" type="button"><span class="label">' + row.label + '</span>' +
+            '<span class="value">' + (row.value ? '<span>' + row.value + '</span>' : '') + (row.chevron ? icon('chev-right') : '') + '</span></button>';
+        }).join('') +
+      '</div>'
+    ).join('');
+
+    $$('#settings-groups .toggle').forEach((t) => {
+      t.addEventListener('click', () => {
+        const row = D.settings[+t.dataset.g].rows[+t.dataset.r];
+        row.on = !row.on;
+        t.setAttribute('aria-checked', String(row.on));
+      });
+    });
+  }
+
+  /* ============ Router ============ */
+  const SCREENS = ['home', 'detail', 'kingdom', 'connect', 'pray', 'settings'];
+  const NAV_ACTIVE = { home: 'home', detail: 'detail', connect: 'connect', pray: 'pray' };
+  const NAV_HIDDEN = { kingdom: true, settings: true };
+  let current = 'home';
+  let previous = 'home';
+
+  function showScreen(id) {
+    if (!SCREENS.includes(id) || id === current) return;
+    previous = current;
+    current = id;
+    SCREENS.forEach((s) => {
+      const el = $('#screen-' + s);
+      el.classList.toggle('active', s === id);
+      el.setAttribute('aria-hidden', String(s !== id));
+    });
+    // Header right control
+    $('#header-avatar-btn').hidden = (id === 'kingdom' || id === 'settings');
+    $('#header-close-btn').hidden = (id !== 'kingdom');
+    // Nav island
+    const nav = $('#nav-island');
+    nav.classList.toggle('hidden', !!NAV_HIDDEN[id]);
+    $$('.nav-item', nav).forEach((item) => {
+      if (NAV_ACTIVE[id] === item.dataset.tab) item.setAttribute('aria-current', 'page');
+      else item.removeAttribute('aria-current');
+    });
+    window.scrollTo(0, 0);
+    if (id === 'home') renderPath();
+  }
+
+  $$('.nav-item').forEach((item) => {
+    item.addEventListener('click', () => showScreen(item.dataset.tab));
+  });
+  $('#header-avatar-btn').addEventListener('click', () => showScreen('settings'));
+  $('#header-close-btn').addEventListener('click', () => showScreen('home'));
+  $$('[data-nav-to]').forEach((el) => el.addEventListener('click', () => showScreen(el.dataset.navTo)));
+  $$('[data-nav-back]').forEach((el) => el.addEventListener('click', () => showScreen(previous === 'settings' ? 'home' : previous)));
+
+  /* ============ Boot ============ */
+  renderStatusStrips();
+  renderShelf();
+  renderReel();
+  renderFilters();
+  renderConversations();
+  renderGoal();
+  renderPray();
+  renderSettings();
+  renderPath();
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (current === 'home') renderPath(); }, 120);
+  });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+  }
+  </script>
+</body>
+</html>
