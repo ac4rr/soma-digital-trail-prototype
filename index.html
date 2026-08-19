@@ -10,11 +10,13 @@
     /* Applied before first paint so the theme never flashes. Session-only:
        the choice lives in memory, nothing is stored. */
     (function () {
-      window.__somaTheme = 'system';
+      window.__somaTheme = 'dark';          /* default; 'system' is opt-in */
       var mq = window.matchMedia('(prefers-color-scheme: light)');
       var resolve = function () {
         var t = window.__somaTheme === 'system' ? (mq.matches ? 'light' : 'dark') : window.__somaTheme;
         document.documentElement.setAttribute('data-theme', t);
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', t === 'light' ? '#F7F8FA' : '#10141A');
         return t;
       };
       window.__somaResolveTheme = resolve;
@@ -839,6 +841,17 @@
     }
     .toggle[aria-checked="true"] { background: var(--primary); }
     .toggle[aria-checked="true"]::after { transform: translateX(19px); background: var(--on-fill); }
+    /* Appearance disclosure: a real choice list, not a blind cycle. */
+    .settings-row .chev { transition: transform var(--dur-release) var(--ease-out-soft); }
+    .settings-row[aria-expanded="true"] .chev { transform: rotate(90deg); }
+    .theme-choices { display: none; }
+    .theme-choices.open { display: block; }
+    .theme-choices .settings-row { border-top: 1px solid var(--hairline); padding-left: 32px; }
+    .theme-choices + .settings-row { border-top: 1px solid var(--hairline); }
+    .theme-choice .check { color: var(--accent-text); opacity: 0; transition: opacity 160ms var(--ease-in-out); }
+    .theme-choice[aria-checked="true"] .check { opacity: 1; }
+    .theme-choice[aria-checked="true"] .label { font-weight: 600; }
+
     .signout-wrap { margin-top: 48px; }
     .signout-row {
       width: 100%;
@@ -961,6 +974,7 @@
       #main.pushed { transform: none !important; opacity: 1 !important; }
 
       .toggle::after { transition: none !important; }
+      .settings-row .chev { transition: none !important; }
       .goal-row .fill { transition: none !important; }
       #filter-underline.anim { transition: none !important; }
       .toast, .toast.show { transform: translate(-50%, 0) !important; transition: opacity 120ms linear !important; }
@@ -1345,7 +1359,7 @@
         { label: 'Weekly summary', toggle: true, on: false }
       ]},
       { cap: 'App', rows: [
-        { label: 'Appearance', value: 'System', chevron: true, action: 'theme' },
+        { label: 'Appearance', value: 'Dark', chevron: true, action: 'theme' },
         { label: 'Language', value: 'English', chevron: true },
         { label: 'Followed topics', value: '3 topics', chevron: true },
         { label: 'Privacy', chevron: true },
@@ -1806,6 +1820,22 @@
             return '<div class="settings-row"><span class="label">' + row.label + '</span>' +
               '<button class="toggle" type="button" role="switch" aria-checked="' + row.on + '" aria-label="' + row.label + '" data-g="' + gi + '" data-r="' + ri + '"></button></div>';
           }
+          if (row.action === 'theme') {
+            const opts = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
+            return '<button class="settings-row" type="button" data-action="theme-toggle"' +
+                ' aria-expanded="false" aria-controls="theme-choices" data-g="' + gi + '" data-r="' + ri + '">' +
+                '<span class="label">' + row.label + '</span>' +
+                '<span class="value"><span data-theme-label>' + row.value + '</span>' + icon('chev-right', 'chev') + '</span>' +
+              '</button>' +
+              '<div class="theme-choices" id="theme-choices" role="radiogroup" aria-label="Appearance">' +
+                opts.map(([v, l]) =>
+                  '<button class="settings-row theme-choice" type="button" role="radio" data-theme-set="' + v + '"' +
+                  ' aria-checked="' + (window.__somaTheme === v) + '">' +
+                    '<span class="label">' + l + '</span>' +
+                    '<span class="value check">' + icon('check') + '</span>' +
+                  '</button>').join('') +
+              '</div>';
+          }
           return '<button class="settings-row" type="button"' + (row.action ? ' data-action="' + row.action + '" data-g="' + gi + '" data-r="' + ri + '"' : '') + '>' +
             '<span class="label">' + row.label + '</span>' +
             '<span class="value">' + (row.value ? '<span>' + row.value + '</span>' : '') + (row.chevron ? icon('chev-right') : '') + '</span></button>';
@@ -1813,19 +1843,31 @@
       '</div>'
     ).join('');
 
-    $$('#settings-groups [data-action="theme"]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const order = ['System', 'Light', 'Dark'];
-        const row = D.settings[+btn.dataset.g].rows[+btn.dataset.r];
-        row.value = order[(order.indexOf(row.value) + 1) % order.length];
-        window.__somaTheme = row.value.toLowerCase();
-        const applied = window.__somaResolveTheme();
-        const meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', applied === 'light' ? '#F7F8FA' : '#10141A');
-        crossfadeText(btn.querySelector('.value span'), row.value);
+    const themeToggle = $('#settings-groups [data-action="theme-toggle"]');
+    if (themeToggle) {
+      const choices = $('#theme-choices');
+      themeToggle.addEventListener('click', () => {
+        const open = themeToggle.getAttribute('aria-expanded') === 'true';
+        themeToggle.setAttribute('aria-expanded', String(!open));
+        choices.classList.toggle('open', !open);
         haptic(10);
       });
-    });
+      $$('[data-theme-set]', choices).forEach((opt) => {
+        opt.addEventListener('click', () => {
+          const val = opt.dataset.themeSet;
+          if (window.__somaTheme !== val) {
+            window.__somaTheme = val;
+            window.__somaResolveTheme();          // also updates meta theme-color
+            const row = D.settings[+themeToggle.dataset.g].rows[+themeToggle.dataset.r];
+            row.value = opt.querySelector('.label').textContent;
+            crossfadeText($('[data-theme-label]', themeToggle), row.value);
+          }
+          $$('[data-theme-set]', choices).forEach((o) =>
+            o.setAttribute('aria-checked', String(o.dataset.themeSet === val)));
+          haptic(10);
+        });
+      });
+    }
 
     $$('#settings-groups .toggle').forEach((t) => {
       t.addEventListener('click', () => {
